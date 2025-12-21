@@ -4,15 +4,15 @@
 import os
 import pandas as pd
 #import seaborn as sns
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt   
+
 from collections import defaultdict
 import streamlit as st
 from sqlalchemy import text
 from db import Session
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, date
-
 
 # -------------------- [2] CSS PERSONALIZADO --------------------
 
@@ -84,106 +84,7 @@ def grafico_frequencia_palpites():
 
     return fig
 
-
     # essa def esta sem utilização(ainda)!!!!
-
-    def mostrar_telemetria():
-        st.markdown("## 📊 Telemetria dos Modelos (FaixaBet AI)")
-        db = Session()
-
-        try:
-            # --------------------------------------------
-            # 1) Quantidade de palpites por modelo
-            # --------------------------------------------
-            st.markdown("###  Quantidade de palpites gerados")
-            query_qtd = text("""
-                SELECT modelo, COUNT(*) AS quantidade
-                FROM telemetria
-                GROUP BY modelo
-                ORDER BY quantidade DESC;
-            """)
-            df_qtd = pd.read_sql(query_qtd, db.bind)
-            st.bar_chart(df_qtd.set_index("modelo"))
-
-            # --------------------------------------------
-            # 2) Desempenho médio cruzando resultados oficiais
-            # --------------------------------------------
-            st.markdown("###  Desempenho médio de acertos")
-
-            query_perf = text("""
-                SELECT 
-                    t.modelo,
-                    COUNT(*) AS palpites,
-                    ROUND(AVG(
-                        (
-                            SELECT COUNT(*)
-                            FROM unnest(string_to_array(t.numeros, ' ')) AS p(num)
-                            WHERE p.num = ANY(ARRAY[
-                                r.d1, r.d2, r.d3, r.d4, r.d5,
-                                r.d6, r.d7, r.d8, r.d9, r.d10,
-                                r.d11, r.d12, r.d13, r.d14, r.d15
-                            ]::text[])
-                        )
-                    ), 2) AS media_acertos,
-                    
-                    SUM(
-                        (
-                            SELECT COUNT(*)
-                            FROM unnest(string_to_array(t.numeros, ' ')) AS p(num)
-                            WHERE p.num = ANY(ARRAY[
-                                r.d1, r.d2, r.d3, r.d4, r.d5,
-                                r.d6, r.d7, r.d8, r.d9, r.d10,
-                                r.d11, r.d12, r.d13, r.d14, r.d15
-                            ]::text[])
-                        ) >= 13
-                    ) AS qtd_13p,
-
-                    SUM(
-                        (
-                            SELECT COUNT(*)
-                            FROM unnest(string_to_array(t.numeros, ' ')) AS p(num)
-                            WHERE p.num = ANY(ARRAY[
-                                r.d1, r.d2, r.d3, r.d4, r.d5,
-                                r.d6, r.d7, r.d8, r.d9, r.d10,
-                                r.d11, r.d12, r.d13, r.d14, r.d15
-                            ]::text[])
-                        ) >= 14
-                    ) AS qtd_14p,
-
-                    SUM(
-                        (
-                            SELECT COUNT(*)
-                            FROM unnest(string_to_array(t.numeros, ' ')) AS p(num)
-                            WHERE p.num = ANY(ARRAY[
-                                r.d1, r.d2, r.d3, r.d4, r.d5,
-                                r.d6, r.d7, r.d8, r.d9, r.d10,
-                                r.d11, r.d12, r.d13, r.d14, r.d15
-                            ]::text[])
-                        ) = 15
-                    ) AS qtd_15p
-
-                FROM telemetria t
-                JOIN resultados_oficiais r 
-                    ON to_char(t.data_execucao, 'DD/MM/YYYY') = r.data
-                GROUP BY t.modelo
-                ORDER BY media_acertos DESC;
-            """)
-
-            df_perf = pd.read_sql(query_perf, db.bind)
-            st.dataframe(df_perf)
-
-            # --------------------------------------------
-            # 3) Melhor modelo do dia
-            # --------------------------------------------
-            if not df_perf.empty:
-                best = df_perf.iloc[0]
-                st.success(f" **Melhor modelo até agora:** `{best.modelo}` — média **{best.media_acertos} acertos**")
-
-        except Exception as e:
-            st.error(f"Erro ao carregar telemetria: {e}")
-
-        finally:
-            db.close()
 
 def mostrar_telemetria():
     st.markdown("## 📊 Telemetria dos Modelos (FaixaBet AI)")
@@ -825,10 +726,6 @@ def mostrar_dashboard():
     elif op.startswith("💰"):
         st.info("💰 Em breve: simulação de ganhos estimados.")
 
-
-
-
-
     # -------------------------------
     # 🔹 Verifica login
     # -------------------------------
@@ -907,7 +804,6 @@ def mostrar_dashboard():
             AND EXTRACT(MONTH FROM data_norm) = EXTRACT(MONTH FROM CURRENT_DATE)
             AND EXTRACT(YEAR FROM data_norm) = EXTRACT(YEAR FROM CURRENT_DATE)
         """), {"uid": user_id}).scalar() or 0
-
 
     finally:
         db.close()
