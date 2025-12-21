@@ -62,7 +62,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from sqlalchemy import text, create_engine
 
-from db import Session
+from app.db import Session
 
 # --- LS16: ensemble inteligente (tenta usar modelo_llm_max/ensemble.py)
 try:

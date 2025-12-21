@@ -28,10 +28,10 @@ from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-from db import Session
+from app.db import Session
 from dashboard import mostrar_dashboard
 
-from auth import verificar_senha, registrar_login, logout
+from app.auth import verificar_senha, registrar_login, logout
 from services.email_service import enviar_email_reset
 from app.notificacoes.notifica import tela_notificacoes_acertos
 
@@ -77,7 +77,7 @@ def limpar_falhas_login(usuario):
     st.session_state.get("login_block", {}).pop(usuario, None)
 
 # ========= PALPITES (LEGACY) =========
-from palpites_legacy import (
+from app.palpites_legacy import (
     gerar_palpite_ui,
     historico_palpites,
     validar_palpite
@@ -90,9 +90,9 @@ if "recover_step" not in st.session_state:
 if "recover_email" not in st.session_state:
     st.session_state.recover_email = None
 
-from auth import logout
-from perfil import editar_perfil
-from financeiro import exibir_aba_financeiro
+from app.auth import logout
+from app.perfil import editar_perfil
+from app.financeiro import exibir_aba_financeiro
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from urllib.parse import urlparse, parse_qs

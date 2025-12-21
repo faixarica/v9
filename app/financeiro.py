@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 from datetime import datetime
 from sqlalchemy.sql import text
-from db import Session
+from app.db import Session
 import webbrowser
 
 BACKEND_URL = "https://backend-v8.onrender.com"

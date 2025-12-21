@@ -9,7 +9,7 @@ import numpy as np
 from collections import defaultdict
 import streamlit as st
 from sqlalchemy import text
-from db import Session
+from app.db import Session
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime, date
 
