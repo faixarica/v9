@@ -32,7 +32,7 @@ from app.db import Session
 from app.dashboard import mostrar_dashboard
 
 from app.auth import verificar_senha, registrar_login, logout
-from services.email_service import enviar_email_reset
+from app.services.email_service import enviar_email_reset
 from app.notificacoes.notifica import tela_notificacoes_acertos
 
 
