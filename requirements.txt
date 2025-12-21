@@ -14,5 +14,8 @@ numpy
 pandas
 requests
 
+# graficos
+matplotlib
+
 # Pagamentos (se usado no app)
 stripe
