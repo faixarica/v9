@@ -20,6 +20,9 @@ import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pds
 import hashlib
+# streamlit_app.py
+import app.main
+
 from passlib.hash import pbkdf2_sha256
 from datetime import datetime, date, timedelta
 from dotenv import load_dotenv
