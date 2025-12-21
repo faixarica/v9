@@ -29,7 +29,7 @@ from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from app.db import Session
-from dashboard import mostrar_dashboard
+from app.dashboard import mostrar_dashboard
 
 from app.auth import verificar_senha, registrar_login, logout
 from services.email_service import enviar_email_reset
