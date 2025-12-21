@@ -1,4 +1,7 @@
-# streamlit_app.py
-from app.main import main
+# streamlit_app.py 21/12/2025   
 
-main()
+
+import sys
+import os
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "app"))
