@@ -12,6 +12,9 @@ st.set_page_config(
 
 st.write("🔄 Inicializando aplicação...")
 
+if "app_initialized" not in st.session_state:
+    st.session_state.app_initialized = False
+
 import sys
 from pathlib import Path
 
@@ -85,13 +88,12 @@ def limpar_falhas_login(usuario):
     st.session_state.get("login_attempts", {}).pop(usuario, None)
     st.session_state.get("login_block", {}).pop(usuario, None)
 
-# ========= PALPITES (LEGACY) =========
-from app.palpites_legacy import (
-    gerar_palpite_ui,
-    historico_palpites,
-    validar_palpite
-)
-
+# ========= PALPITES (LEGACY) ========= comentei 22/12 pq entend q nao precisa desse import neste ponte
+#from app.palpites_legacy import (
+#    gerar_palpite_ui,
+#    historico_palpites,
+#    validar_palpite
+#)
 
 if "recover_step" not in st.session_state:
     st.session_state.recover_step = 0
