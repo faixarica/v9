@@ -10,6 +10,9 @@ BASE_DIR = Path(__file__).resolve().parents[1]  # C:\Faixabet\V9
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
 
+
+
+
 # Agora sim, importar as bibliotecas
 import os
 import secrets
@@ -35,6 +38,7 @@ from app.auth import verificar_senha, registrar_login, logout
 from app.services.email_service import enviar_email_reset
 from app.notificacoes.notifica import tela_notificacoes_acertos
 
+st.write("BOOT OK - chegou no main")
 
 
 MAX_LOGIN_ATTEMPTS = 5
