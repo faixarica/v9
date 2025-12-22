@@ -3,6 +3,15 @@
 # descrição: Aplicação principal Streamlit da fAIxaBet V9
 # Adicionar o path de FaixaBet no sys.path (antes de qualquer import)
 
+import streamlit as st
+
+st.set_page_config(
+    page_title="FaixaBet",
+    layout="wide"
+)
+
+st.write("🔄 Inicializando aplicação...")
+
 import sys
 from pathlib import Path
 
@@ -12,19 +21,15 @@ if str(BASE_DIR) not in sys.path:
 
 
 
-
 # Agora sim, importar as bibliotecas
 import os
 import secrets
 import smtplib
 import requests
 import base64
-import streamlit as st
 import streamlit.components.v1 as components
 import pandas as pds
 import hashlib
-# streamlit_app.py
-import app.main
 
 from passlib.hash import pbkdf2_sha256
 from datetime import datetime, date, timedelta
