@@ -28,7 +28,7 @@
 import streamlit as st
 import bcrypt
 from sqlalchemy import text
-from db import Session
+from app.db import Session
 import streamlit as st
 from passlib.hash import pbkdf2_sha256
 

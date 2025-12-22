@@ -154,20 +154,52 @@ def _existing_cols(table_name: str) -> set:
 
 # --- caminhos / arquivos
 BASE_DIR = os.getcwd()
-CSV_LOTOFACIL = os.path.join(BASE_DIR, "loteria.csv")  # ajuste se precisar
-
 # -------- Estatístico (freq + recência + correlação) --------
-
 def _carregar_df_lotofacil():
-    if not os.path.exists(CSV_LOTOFACIL):
-        raise FileNotFoundError(f"CSV não encontrado: {CSV_LOTOFACIL}")
-    df = pd.read_csv(CSV_LOTOFACIL, encoding="utf-8")
-    bolas = [f"Bola{i}" for i in range(1, 16)]
-    for b in bolas:
-        df[b] = df[b].astype(str).str.zfill(2)
-    if "Concurso" in df.columns:
-        df = df.sort_values("Concurso", ascending=False)
-    return df, bolas
+    """
+    Carrega dados da Lotofácil diretamente do Banco de Dados (resultados_oficiais).
+    Substitui antigo loteria.csv.
+    """
+    db = Session()
+    try:
+        # Busca concurso e dezenas
+        query = text("""
+            SELECT concurso, n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13,n14,n15
+            FROM resultados_oficiais
+            ORDER BY concurso DESC
+        """)
+        rows = db.execute(query).fetchall()
+        
+        if not rows:
+             # Fallback ou dataframe vazio se a tabela estiver vazia
+             cols = ["Concurso"] + [f"Bola{i}" for i in range(1, 16)]
+             return pd.DataFrame(columns=cols), [f"Bola{i}" for i in range(1, 16)]
+
+        # Monta lista de dicts para o DataFrame
+        data = []
+        for r in rows:
+            row_dict = {"Concurso": r[0]}
+            # Bolas 1 a 15 (indices 1 a 15 na tupla)
+            for i in range(1, 16):
+                val = r[i]
+                # Formata como string zfill(2) para compatibilidade
+                row_dict[f"Bola{i}"] = f"{int(val):02d}" if val is not None else "00"
+            data.append(row_dict)
+            
+        df = pd.DataFrame(data)
+        
+        # Bolas
+        bolas = [f"Bola{i}" for i in range(1, 16)]
+        
+        return df, bolas
+
+    except Exception as e:
+        logging.error(f"Erro ao carregar DF do banco: {e}")
+        # Retorna vazio para não quebrar tudo
+        cols = ["Concurso"] + [f"Bola{i}" for i in range(1, 16)]
+        return pd.DataFrame(columns=cols), [f"Bola{i}" for i in range(1, 16)]
+    finally:
+        db.close()
 
 @lru_cache(maxsize=1)
 def _stats_pack(recencia=100):
@@ -1827,7 +1859,9 @@ def gerar_para_plano_legacy_v0(nome_plano: str, qtd: int = 3, k_escolhido: int |
 
 # ================== [GENERATOR CORE] ==================
 def _amostrar_dezenas(scores_25, k=15, correl_steps=10, pares_range=(6,9)):
-    usados = combinacoes_ja_sorteadas()
+    # OBS: Veto de combinações já sorteadas REMOVIDO a pedido.
+    # usados = combinacoes_ja_sorteadas() 
+    
     dezenas = list(range(1, 26))
 
     base_weights = _normalize_probs(scores_25)
@@ -1849,8 +1883,11 @@ def _amostrar_dezenas(scores_25, k=15, correl_steps=10, pares_range=(6,9)):
             atual.add(prox)
 
         comb = sorted(atual)
-        if tuple(comb) in usados:
-            continue
+        
+        # Logica de veto removida
+        # if tuple(comb) in usados:
+        #    continue
+            
         pares = sum(1 for d in comb if d % 2 == 0)
         if not (pares_range[0] <= pares <= pares_range[1]):
             continue
