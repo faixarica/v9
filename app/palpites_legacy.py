@@ -155,49 +155,37 @@ def _existing_cols(table_name: str) -> set:
 # --- caminhos / arquivos
 BASE_DIR = os.getcwd()
 # -------- Estatístico (freq + recência + correlação) --------
+from sqlalchemy import text
+import pandas as pd
+
 def _carregar_df_lotofacil():
     """
-    Carrega dados da Lotofácil diretamente do Banco de Dados (resultados_oficiais).
-    Substitui antigo loteria.csv.
+    Fonte oficial PRD: banco.
+    Retorna (df, bolas) compatível com _stats_pack().
     """
     db = Session()
     try:
-        # Busca concurso e dezenas
-        query = text("""
-            SELECT concurso, n1,n2,n3,n4,n5,n6,n7,n8,n9,n10,n11,n12,n13,n14,n15
+        rows = db.execute(text("""
+            SELECT
+                data,
+                n1, n2, n3, n4, n5,
+                n6, n7, n8, n9, n10,
+                n11, n12, n13, n14, n15
             FROM resultados_oficiais
-            ORDER BY concurso DESC
-        """)
-        rows = db.execute(query).fetchall()
-        
+            ORDER BY data DESC
+        """)).fetchall()
+
         if not rows:
-             # Fallback ou dataframe vazio se a tabela estiver vazia
-             cols = ["Concurso"] + [f"Bola{i}" for i in range(1, 16)]
-             return pd.DataFrame(columns=cols), [f"Bola{i}" for i in range(1, 16)]
+            raise RuntimeError("Sem registros em resultados_oficiais (Lotofácil).")
 
-        # Monta lista de dicts para o DataFrame
-        data = []
-        for r in rows:
-            row_dict = {"Concurso": r[0]}
-            # Bolas 1 a 15 (indices 1 a 15 na tupla)
-            for i in range(1, 16):
-                val = r[i]
-                # Formata como string zfill(2) para compatibilidade
-                row_dict[f"Bola{i}"] = f"{int(val):02d}" if val is not None else "00"
-            data.append(row_dict)
-            
-        df = pd.DataFrame(data)
-        
-        # Bolas
         bolas = [f"Bola{i}" for i in range(1, 16)]
-        
-        return df, bolas
+        df = pd.DataFrame(rows, columns=["data"] + bolas)
 
-    except Exception as e:
-        logging.error(f"Erro ao carregar DF do banco: {e}")
-        # Retorna vazio para não quebrar tudo
-        cols = ["Concurso"] + [f"Bola{i}" for i in range(1, 16)]
-        return pd.DataFrame(columns=cols), [f"Bola{i}" for i in range(1, 16)]
+        # padroniza como o legado esperava: '01'..'25'
+        for b in bolas:
+            df[b] = df[b].astype(int).astype(str).str.zfill(2)
+
+        return df, bolas
     finally:
         db.close()
 
