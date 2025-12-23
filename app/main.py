@@ -28,7 +28,7 @@ def main():
     from app.perfil import editar_perfil
     from app.financeiro import exibir_aba_financeiro
 
-    st.write("🔄 Inicializando aplicação...")
+    #st.write("🔄 Inicializando aplicação...")
 
     # -------------------------------
     # Estado global (sempre dentro do main)
@@ -376,9 +376,9 @@ def main():
     elif opcao_selecionada in ["Gerar Novas Bets", "Histórico", "Validar Bets Gerada"]:
         # ✅ ajuste de imports p/ estrutura V9
         if loteria_escolhida == "Mega-Sena":
-            from app.mega.palpites_m import gerar_palpite_ui, historico_palpites, validar_palpite
+            from mega.palpites_m import gerar_palpite_ui, historico_palpites, validar_palpite
         else:
-            from app.palpites_legacy import gerar_palpite_ui, historico_palpites, validar_palpite
+            from palpites_legacy import gerar_palpite_ui, historico_palpites, validar_palpite
 
         if opcao_selecionada == "Gerar Novas Bets":
             gerar_palpite_ui()
