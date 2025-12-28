@@ -19,6 +19,31 @@ from datetime import datetime, date
 def apply_custom_css():
     st.markdown("""
         <style>
+            /* ===============================
+               LAYOUT GLOBAL (HEADER / LOGO)
+               =============================== */
+
+            /* Remove espaço superior padrão do Streamlit */
+            .block-container {
+                padding-top: 1rem !important;
+            }
+
+            /* Remove margem automática após imagens (logo) */
+            img {
+                margin-bottom: 0rem !important;
+            }
+
+            /* Remove margem extra antes/depois dos títulos */
+            h1, h2, h3, h4 {
+                margin-top: 0rem !important;
+                margin-bottom: 0.2rem !important;
+                padding-top: 0rem !important;
+            }
+
+            /* ===============================
+               SEUS ESTILOS EXISTENTES
+               =============================== */
+
             .card {
                 padding: 15px;
                 margin: 10px 0;
@@ -29,16 +54,19 @@ def apply_custom_css():
                 font-size: 16px;
                 box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             }
+
             .metric-title {
                 font-size: 18px;
                 font-weight: bold;
                 margin-bottom: 10px;
                 color: #333;
             }
+
             .metric-value {
                 font-size: 22px;
                 color: #6C63FF;
             }
+
             .scrollable-container {
                 max-height: 700px;
                 overflow-y: auto;
@@ -46,6 +74,7 @@ def apply_custom_css():
             }
         </style>
     """, unsafe_allow_html=True)
+
 
 # -------------------- [3] FUNÇÃO AUXILIAR DE DATA --------------------
 
@@ -211,268 +240,155 @@ def _dezenas_acertos_sql(qtd_dezenas: int, tbl_palpites: str, tbl_res: str) -> s
     FROM base;
     """
 
-def mostrar_analise_acertos_topo(user_id: int, loteria_ativa: str):
+def mostrar_analise_acertos_topo(user_id: int, loteria=None, loteria_ativa=None):
+    import streamlit as st
+    from sqlalchemy import text
+    from db import Session
 
-    # -------------------------------------------------
-    # 🔹 Configuração por loteria
-    # -------------------------------------------------
-    if loteria_ativa == "megasena":
-        tbl_palp = "palpites_m"
-        tbl_res = "resultados_oficiais_m"
-        qtd = 6
-        min_premio = 4
+    lot = (loteria_ativa or loteria or st.session_state.get("loteria") or "").lower().strip()
 
-        dezenas_array = "ARRAY[r.n1, r.n2, r.n3, r.n4, r.n5, r.n6]"
-        join_data = "p.data_norm = r.data"
+    # ---- LOTOFÁCIL (corrigido) ----
+    if lot in ("lotofacil", "loto-facil", "loto fácil", "lotofácil", "lf"):
 
-    else:  # LOTOFÁCIL
-        tbl_palp = "palpites"
-        tbl_res = "resultados_oficiais"
-        qtd = 15
-        min_premio = 11
-
-        dezenas_array = """
-            ARRAY[
-                r.n1, r.n2, r.n3, r.n4, r.n5,
-                r.n6, r.n7, r.n8, r.n9, r.n10,
-                r.n11, r.n12, r.n13, r.n14, r.n15
-            ]
-        """
-        # resultados_oficiais.data = TEXT 'DD/MM/YYYY'
-        join_data = "p.data_norm = to_date(r.data, 'DD/MM/YYYY')"
-
-    # -------------------------------------------------
-    # 🔹 SQL FINAL (gerado conforme a loteria)
-    # -------------------------------------------------
-    sql = f"""
-    WITH base AS (
+        sql = """
+        WITH r_norm AS (
+            SELECT
+                -- normaliza data do resultado (TEXT) para DATE com segurança
+                CASE
+                    WHEN r.data ~ '^\\d{2}/\\d{2}/\\d{4}$' THEN to_date(r.data, 'DD/MM/YYYY')
+                    WHEN r.data ~ '^\\d{4}-\\d{2}-\\d{2}$' THEN to_date(r.data, 'YYYY-MM-DD')
+                    ELSE NULL
+                END AS r_dt,
+                r.n1,r.n2,r.n3,r.n4,r.n5,
+                r.n6,r.n7,r.n8,r.n9,r.n10,
+                r.n11,r.n12,r.n13,r.n14,r.n15
+            FROM resultados_oficiais r
+        ),
+        base AS (
+            SELECT
+                p.id,
+                p.data_norm AS p_dt,
+                h.acertos
+            FROM palpites p
+            JOIN r_norm r
+              ON r.r_dt = p.data_norm
+            CROSS JOIN LATERAL (
+                SELECT COUNT(*) AS acertos
+                FROM unnest(
+                    regexp_split_to_array(
+                        NULLIF(trim(COALESCE(p.dezenas, p.numeros)), ''),
+                        '[,\\s]+'
+                    )
+                ) AS d(txt)
+                WHERE NULLIF(d.txt,'') IS NOT NULL
+                  AND d.txt ~ '^\\d+$'
+                  AND (d.txt::int) = ANY(ARRAY[
+                      r.n1,r.n2,r.n3,r.n4,r.n5,
+                      r.n6,r.n7,r.n8,r.n9,r.n10,
+                      r.n11,r.n12,r.n13,r.n14,r.n15
+                  ])
+            ) h
+            WHERE p.id_usuario = :uid
+              AND p.data_norm IS NOT NULL
+              AND r.r_dt IS NOT NULL
+        )
         SELECT
-            p.id,
-            p.data_norm AS dt,
-            h.acertos
-        FROM {tbl_palp} p
-        JOIN {tbl_res} r
-          ON {join_data}
-        CROSS JOIN LATERAL (
-            SELECT COUNT(*) AS acertos
-            FROM unnest(string_to_array(p.dezenas, ',')::int[]) AS d(num)
-            WHERE d.num = ANY({dezenas_array})
-        ) h
-        WHERE p.id_usuario = :uid
-    )
-    SELECT
-        COUNT(*) AS avaliados,
-        COALESCE(MAX(acertos), 0) AS melhor,
-        ROUND(AVG(acertos)::numeric, 2) AS media,
-        COUNT(*) FILTER (
-            WHERE dt >= date_trunc('month', CURRENT_DATE)::date
-              AND acertos >= :min_premio
-        ) AS premiaveis_mes,
-        COUNT(*) FILTER (WHERE acertos >= :min_premio) AS premiaveis_total,
-        ROUND(AVG(acertos) FILTER (
-            WHERE dt >= CURRENT_DATE - INTERVAL '30 days'
-        )::numeric, 2) AS media_30d,
-        ROUND(AVG(acertos) FILTER (
-            WHERE dt <  CURRENT_DATE - INTERVAL '30 days'
-              AND dt >= CURRENT_DATE - INTERVAL '60 days'
-        )::numeric, 2) AS media_30d_prev
-    FROM base;
-    """
-
-    # -------------------------------------------------
-    # 🔹 Execução
-    # -------------------------------------------------
-    db = Session()
-    try:
-        row = db.execute(
-            text(sql),
-            {"uid": user_id, "min_premio": min_premio}
-        ).fetchone()
-    except Exception as e:
-        st.warning(f"⚠️ Não foi possível calcular a análise de acertos ainda: {e}")
-        return
-    finally:
-        db.close()
-
-    if not row or row.avaliados == 0:
-        st.info("Ainda não há palpites avaliáveis para análise.")
-        return
-
-    # -------------------------------------------------
-    # 🔹 Métricas
-    # -------------------------------------------------
-    avaliados = row.avaliados
-    melhor = row.melhor
-    premiaveis_total = row.premiaveis_total
-    premiaveis_mes = row.premiaveis_mes
-    media_30d = row.media_30d or 0
-    media_30d_prev = row.media_30d_prev or 0
-
-    taxa = (premiaveis_total / avaliados) * 100 if avaliados else 0
-    delta = media_30d - media_30d_prev
-    seta = "📈" if delta > 0 else ("📉" if delta < 0 else "➖")
-
-    # -------------------------------------------------
-    # 🔹 UI — 4 cards “Jogou, ganhou”
-    # -------------------------------------------------
-    st.markdown("### Jogou, ganhou? (análise automática)")
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        st.markdown(f"""
-        <div class="card">
-            <div class="metric-title">🏆 Melhor acerto</div>
-            <div class="metric-value">{melhor}/{qtd}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c2:
-        st.markdown(f"""
-        <div class="card">
-            <div class="metric-title">🎯 % Premiável</div>
-            <div class="metric-value">{taxa:.1f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c3:
-        st.markdown(f"""
-        <div class="card">
-            <div class="metric-title">💎 Premiáveis no mês</div>
-            <div class="metric-value">{premiaveis_mes}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c4:
-        st.markdown(f"""
-        <div class="card">
-            <div class="metric-title">📊 Tendência</div>
-            <div class="metric-value">{seta} {media_30d:.2f}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-def mostrar_analise_acertos_topo(user_id: int, loteria_ativa: str):
-
-    if loteria_ativa == "megasena":
-        tbl_palp = "palpites_m"
-        tbl_res = "resultados_oficiais_m"
-        qtd = 6
-        min_premio = 4
-
-        # Mega: numeros pode vir "02 30 32 35 54 58" ou "02,30,32,35,54,58"
-        dezenas_sql = "unnest(regexp_split_to_array(trim(p.numeros), '[,\\s]+')::int[])"
-        dezenas_array = "ARRAY[r.n1, r.n2, r.n3, r.n4, r.n5, r.n6]"
-        join_data = "p.data_norm = r.data"
-
-    else:  # LOTOFÁCIL
-        tbl_palp = "palpites"
-        tbl_res = "resultados_oficiais"
-        qtd = 15
-        min_premio = 11
-
-        # Lotofácil: dezenas costuma estar com vírgula (se tiver espaço também, funciona com regex)
-        dezenas_sql = "unnest(regexp_split_to_array(trim(p.dezenas), '[,\\s]+')::int[])"
-        dezenas_array = """
-            ARRAY[
-                r.n1, r.n2, r.n3, r.n4, r.n5,
-                r.n6, r.n7, r.n8, r.n9, r.n10,
-                r.n11, r.n12, r.n13, r.n14, r.n15
-            ]
+            COUNT(*) AS avaliados,
+            COALESCE(MAX(acertos), 0) AS melhor,
+            ROUND(COALESCE(AVG(acertos), 0)::numeric, 2) AS media,
+            COUNT(*) FILTER (
+                WHERE p_dt >= date_trunc('month', CURRENT_DATE)::date
+                  AND acertos >= 11
+            ) AS premiaveis_mes,
+            COUNT(*) FILTER (WHERE acertos >= 11) AS premiaveis_total
+        FROM base;
         """
-        join_data = "p.data_norm = to_date(r.data, 'DD/MM/YYYY')"
 
-    sql = f"""
-    WITH base AS (
+        db = Session()
+        try:
+            row = db.execute(text(sql), {"uid": user_id}).fetchone()
+        except Exception as e:
+            st.warning(f"⚠️ Não foi possível calcular a análise de acertos: {e}")
+            return
+        finally:
+            db.close()
+
+        if not row or row.avaliados == 0:
+            st.info("Ainda não há palpites avaliáveis.")
+            return
+
+        taxa = (row.premiaveis_total / row.avaliados) * 100 if row.avaliados else 0
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🏆 Melhor acerto", f"{row.melhor}/15")
+        c2.metric("🎯 % Premiável", f"{taxa:.1f}%")
+        c3.metric("💎 Premiáveis no mês", row.premiaveis_mes)
+        c4.metric("📊 Média de acertos", f"{row.media:.2f}")
+        return
+
+    if lot in ("mega-sena", "megasena", "ms"):
+        sql = """
+        WITH base AS (
+            SELECT
+                p.id,
+                p.data_norm AS p_dt,
+                h.acertos
+            FROM palpites_m p
+            JOIN resultados_oficiais_m r
+            ON r.data = p.data_norm
+            CROSS JOIN LATERAL (
+                SELECT COUNT(*) AS acertos
+                FROM unnest(
+                    regexp_split_to_array(
+                        NULLIF(trim(p.numeros), ''),
+                        '[,\\s]+'
+                    )
+                ) AS d(txt)
+                WHERE d.txt ~ '^\\d+$'
+                AND (d.txt::int) = ANY (
+                    ARRAY[r.n1, r.n2, r.n3, r.n4, r.n5, r.n6]
+                )
+            ) h
+            WHERE p.id_usuario = :uid
+            AND p.data_norm IS NOT NULL
+        )
         SELECT
-            p.id,
-            p.data_norm AS dt,
-            h.acertos
-        FROM {tbl_palp} p
-        JOIN {tbl_res} r
-          ON {join_data}
-        CROSS JOIN LATERAL (
-            SELECT COUNT(*) AS acertos
-            FROM {dezenas_sql} AS d(num)
-            WHERE d.num = ANY({dezenas_array})
-        ) h
-        WHERE p.id_usuario = :uid
-    )
-    SELECT
-        COUNT(*) AS avaliados,
-        COALESCE(MAX(acertos), 0) AS melhor,
-        ROUND(AVG(acertos)::numeric, 2) AS media,
-        COUNT(*) FILTER (
-            WHERE dt >= date_trunc('month', CURRENT_DATE)::date
-              AND acertos >= :min_premio
-        ) AS premiaveis_mes,
-        COUNT(*) FILTER (WHERE acertos >= :min_premio) AS premiaveis_total,
-        ROUND(AVG(acertos) FILTER (
-            WHERE dt >= CURRENT_DATE - INTERVAL '30 days'
-        )::numeric, 2) AS media_30d,
-        ROUND(AVG(acertos) FILTER (
-            WHERE dt <  CURRENT_DATE - INTERVAL '30 days'
-              AND dt >= CURRENT_DATE - INTERVAL '60 days'
-        )::numeric, 2) AS media_30d_prev
-    FROM base;
-    """
+            COUNT(*) AS avaliados,
+            COALESCE(MAX(acertos), 0) AS melhor,
+            ROUND(COALESCE(AVG(acertos), 0)::numeric, 2) AS media,
+            COUNT(*) FILTER (
+                WHERE p_dt >= date_trunc('month', CURRENT_DATE)::date
+                AND acertos >= 4
+            ) AS premiaveis_mes,
+            COUNT(*) FILTER (WHERE acertos >= 4) AS premiaveis_total
+        FROM base;
+        """
 
-    db = Session()
-    try:
-        row = db.execute(text(sql), {"uid": user_id, "min_premio": min_premio}).fetchone()
-    except Exception as e:
-        st.warning(f"⚠️ Não foi possível calcular a análise de acertos ainda: {e}")
-        return
-    finally:
-        db.close()
+        db = Session()
+        try:
+            row = db.execute(text(sql), {"uid": user_id}).fetchone()
+        except Exception as e:
+            st.warning(f"⚠️ Não foi possível calcular a análise de acertos (Mega-Sena): {e}")
+            return
+        finally:
+            db.close()
 
-    if not row or row.avaliados == 0:
-        st.info("Ainda não há palpites avaliáveis para análise.")
+        if not row or row.avaliados == 0:
+            st.info("Ainda não há palpites avaliáveis para Mega-Sena.")
+            return
+
+        taxa = (row.premiaveis_total / row.avaliados) * 100 if row.avaliados else 0
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("🏆 Melhor acerto", f"{row.melhor}/6")
+        c2.metric("🎯 % Premiável", f"{taxa:.1f}%")
+        c3.metric("💎 Premiáveis no mês", row.premiaveis_mes)
+        c4.metric("📊 Média de acertos", f"{row.media:.2f}")
+
         return
 
-    avaliados = row.avaliados
-    melhor = row.melhor
-    premiaveis_total = row.premiaveis_total
-    premiaveis_mes = row.premiaveis_mes
-    media_30d = row.media_30d or 0
-    media_30d_prev = row.media_30d_prev or 0
+    # (depois a gente ajusta Mega-Sena separadamente)
+    st.info("Função ainda não ajustada para esta loteria neste passo.")
 
-    taxa = (premiaveis_total / avaliados) * 100 if avaliados else 0
-    delta = media_30d - media_30d_prev
-    seta = "📈" if delta > 0 else ("📉" if delta < 0 else "➖")
-
-    st.markdown("### 🧾 Jogou, ganhou? (análise automática)")
-    c1, c2, c3, c4 = st.columns(4)
-
-    with c1:
-        st.markdown(f"""
-        <div class="card">
-            <div class="metric-title">🏆 Melhor acerto</div>
-            <div class="metric-value">{melhor}/{qtd}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c2:
-        st.markdown(f"""
-        <div class="card">
-            <div class="metric-title">🎯 % Premiável</div>
-            <div class="metric-value">{taxa:.1f}%</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c3:
-        st.markdown(f"""
-        <div class="card">
-            <div class="metric-title">💎 Premiáveis no mês</div>
-            <div class="metric-value">{premiaveis_mes}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with c4:
-        st.markdown(f"""
-        <div class="card">
-            <div class="metric-title">📊 Tendência</div>
-            <div class="metric-value">{seta} {media_30d:.2f}</div>
-        </div>
-        """, unsafe_allow_html=True)
 
 def _sql_analise_acertos_megasena() -> str:
     return """
@@ -512,119 +428,192 @@ def _sql_analise_acertos_megasena() -> str:
     FROM base;
     """
 
-def evolucao_30_dias(id_usuario: int):
-    """
-    Evolução dos últimos 30 dias + tendência.
-    Disponível apenas para usuários ASSINANTES:
-    Silver, Gold ou Platinum.
-    """
-
-    from db import Session
+def evolucao_30_dias(user_id: int, loteria=None, loteria_ativa=None):
+    import streamlit as st
     from sqlalchemy import text
-    import numpy as np
+    from db import Session
 
-    db = Session()
+    lot = (loteria_ativa or loteria or st.session_state.get("loteria") or "").lower().strip()
 
-    # --------------------------------------------------
-    # 1) VALIDAR ASSINATURA E PLANO
-    # --------------------------------------------------
-    sql_plano = text("""
-        SELECT p.nome
-        FROM client_plans cp
-        JOIN planos p ON p.id = cp.id_plano
-        WHERE cp.id_client = :uid
-          AND cp.ativo = true
-          AND p.nome IN ('Silver', 'Gold', 'Platinum')
-        LIMIT 1
-    """)
+    # =========================================================
+    # MEGA-SENA
+    # =========================================================
+    if lot in ("mega-sena", "megasena", "ms"):
 
-    plano = db.execute(sql_plano, {"uid": id_usuario}).scalar()
-
-    if not plano:
-        return {
-            "permitido": False,
-            "motivo": "Recurso disponível apenas para planos Silver, Gold ou Platinum"
-            }
-    sql = text("""
-    WITH dias AS (
-        SELECT generate_series(
-            CURRENT_DATE - INTERVAL '29 days',
-            CURRENT_DATE,
-            INTERVAL '1 day'
-        )::date AS dia
-    ),
-    dados AS (
+        sql = """
+        WITH dias AS (
+            SELECT generate_series(
+                CURRENT_DATE - INTERVAL '29 days',
+                CURRENT_DATE,
+                INTERVAL '1 day'
+            )::date AS dia
+        ),
+        dados AS (
+            SELECT
+                p.data_norm AS dia,
+                COUNT(*) AS total_palpites,
+                AVG(h.acertos) AS media_acertos
+            FROM palpites_m p
+            JOIN resultados_oficiais_m r
+              ON r.data = p.data_norm
+            CROSS JOIN LATERAL (
+                SELECT COUNT(*) AS acertos
+                FROM unnest(
+                    regexp_split_to_array(
+                        NULLIF(trim(p.numeros), ''),
+                        '[,\\s]+'
+                    )
+                ) AS d(txt)
+                WHERE d.txt ~ '^\\d+$'
+                  AND (d.txt::int) = ANY (
+                      ARRAY[r.n1, r.n2, r.n3, r.n4, r.n5, r.n6]
+                  )
+            ) h
+            WHERE p.id_usuario = :uid
+              AND p.data_norm >= CURRENT_DATE - INTERVAL '29 days'
+            GROUP BY p.data_norm
+        )
         SELECT
-            p.data_norm AS dia,
-            COUNT(*) AS total_palpites,
-            AVG(h.acertos) AS media_acertos
-        FROM palpites_m p
-        JOIN resultados_oficiais_m r
-            ON r.data = p.data_norm
-        CROSS JOIN LATERAL (
-            SELECT COUNT(*) AS acertos
-            FROM unnest(string_to_array(p.numeros, ',')::int[]) d(num)
-            WHERE d.num = ANY (ARRAY[
-                r.n1, r.n2, r.n3, r.n4, r.n5, r.n6
-            ])
-        ) h
-        WHERE p.id_usuario = :uid
-        AND p.data_norm >= CURRENT_DATE - INTERVAL '29 days'
-        GROUP BY p.data_norm
-    )
-    SELECT
-        d.dia,
-        COALESCE(p.total_palpites, 0) AS total,
-        ROUND(COALESCE(p.media_acertos, 0), 2) AS media
-    FROM dias d
-    LEFT JOIN dados p ON p.dia = d.dia
-    ORDER BY d.dia;
-    """)
+            d.dia,
+            COALESCE(x.total_palpites, 0) AS total,
+            ROUND(COALESCE(x.media_acertos, 0), 2) AS media
+        FROM dias d
+        LEFT JOIN dados x ON x.dia = d.dia
+        ORDER BY d.dia;
+        """
 
-    rows = db.execute(sql, {"uid": id_usuario}).fetchall()
-
-
-    # --------------------------------------------------
-    # 3) CALCULAR TENDÊNCIA
-    # --------------------------------------------------
-    valores = np.array([r.total for r in rows])
-
-    if valores.sum() == 0:
-        tendencia = "neutra"
-    else:
-        x = np.arange(len(valores))
-        coef = np.polyfit(x, valores, 1)[0]
-
-        if coef > 0.05:
-            tendencia = "alta"
-        elif coef < -0.05:
-            tendencia = "queda"
-        else:
-            tendencia = "estável"
-
-    return {
-        "permitido": True,
-        "plano": plano,
-        "tendencia": tendencia,
-        "dados": [
-            {
-                "dia": r.dia,
-                "total_palpites": int(r.total),
-                "media_acertos": float(r.media)
+        db = Session()
+        try:
+            rows = db.execute(text(sql), {"uid": user_id}).fetchall()
+        except Exception as e:
+            return {
+                "permitido": False,
+                "erro": str(e)
             }
-            for r in rows
-        ]
+        finally:
+            db.close()
+
+        return {
+            "permitido": True,
+            "loteria": "Mega-Sena",
+            "dados": [
+                {
+                    "dia": r.dia,
+                    "total_palpites": int(r.total),
+                    "media_acertos": float(r.media)
+                }
+                for r in rows
+            ]
+        }
+
+    # =========================================================
+    # LOTOFÁCIL
+    # =========================================================
+    if lot in ("lotofacil", "lotofácil", "loto-facil", "lf"):
+
+        sql = """
+        WITH r_norm AS (
+            SELECT
+                CASE
+                    WHEN r.data ~ '^\\d{2}/\\d{2}/\\d{4}$'
+                        THEN to_date(r.data, 'DD/MM/YYYY')
+                    WHEN r.data ~ '^\\d{4}-\\d{2}-\\d{2}$'
+                        THEN to_date(r.data, 'YYYY-MM-DD')
+                    ELSE NULL
+                END AS r_dt,
+                r.n1,r.n2,r.n3,r.n4,r.n5,
+                r.n6,r.n7,r.n8,r.n9,r.n10,
+                r.n11,r.n12,r.n13,r.n14,r.n15
+            FROM resultados_oficiais r
+        ),
+        dias AS (
+            SELECT generate_series(
+                CURRENT_DATE - INTERVAL '29 days',
+                CURRENT_DATE,
+                INTERVAL '1 day'
+            )::date AS dia
+        ),
+        dados AS (
+            SELECT
+                p.data_norm AS dia,
+                COUNT(*) AS total_palpites,
+                AVG(h.acertos) AS media_acertos
+            FROM palpites p
+            JOIN r_norm r
+              ON r.r_dt = p.data_norm
+            CROSS JOIN LATERAL (
+                SELECT COUNT(*) AS acertos
+                FROM unnest(
+                    regexp_split_to_array(
+                        NULLIF(trim(COALESCE(p.dezenas, p.numeros)), ''),
+                        '[,\\s]+'
+                    )
+                ) AS d(txt)
+                WHERE d.txt ~ '^\\d+$'
+                  AND (d.txt::int) = ANY (
+                      ARRAY[
+                          r.n1,r.n2,r.n3,r.n4,r.n5,
+                          r.n6,r.n7,r.n8,r.n9,r.n10,
+                          r.n11,r.n12,r.n13,r.n14,r.n15
+                      ]
+                  )
+            ) h
+            WHERE p.id_usuario = :uid
+              AND p.data_norm >= CURRENT_DATE - INTERVAL '29 days'
+              AND r.r_dt IS NOT NULL
+            GROUP BY p.data_norm
+        )
+        SELECT
+            d.dia,
+            COALESCE(x.total_palpites, 0) AS total,
+            ROUND(COALESCE(x.media_acertos, 0), 2) AS media
+        FROM dias d
+        LEFT JOIN dados x ON x.dia = d.dia
+        ORDER BY d.dia;
+        """
+
+        db = Session()
+        try:
+            rows = db.execute(text(sql), {"uid": user_id}).fetchall()
+        except Exception as e:
+            return {
+                "permitido": False,
+                "erro": str(e)
+            }
+        finally:
+            db.close()
+
+        return {
+            "permitido": True,
+            "loteria": "Lotofácil",
+            "dados": [
+                {
+                    "dia": r.dia,
+                    "total_palpites": int(r.total),
+                    "media_acertos": float(r.media)
+                }
+                for r in rows
+            ]
+        }
+
+    # =========================================================
+    # OUTRAS LOTERIAS (ex: Mega-Sena → tratamos depois)
+    # =========================================================
+    return {
+        "permitido": False,
+        "motivo": "Loteria ainda não ajustada nesta função."
     }
 
-
 def mostrar_dashboard():
-   
+
     apply_custom_css()
     st.title("Painel Estatístico")
 
     # -------------------------------
     # 🔹 Login
     # -------------------------------
+    #================= LOGOMARCA LOGIN =================
+    
     usuario = st.session_state.get("usuario")
     if not usuario:
         st.error("Você precisa estar logado.")

@@ -77,8 +77,6 @@ import streamlit as st
 # (opcional) deixa o layout wide, mas não resolve o flash sozinho
 st.set_page_config(layout="wide")
 
-
-
 # =========================
 # CONFIG LOG
 # =========================
@@ -88,7 +86,6 @@ logging.basicConfig(
     level=logging.DEBUG if DEBUG_MODE else logging.INFO,
     format="%(asctime)s %(levelname)s: %(message)s",
 )
-
 
 def _safe_rerun():
     """Rerun compatível com versões novas e antigas do Streamlit."""
@@ -155,7 +152,6 @@ def _existing_cols(table_name: str) -> set:
 # --- caminhos / arquivos
 BASE_DIR = os.getcwd()
 # -------- Estatístico (freq + recência + correlação) --------
-from sqlalchemy import text
 import pandas as pd
 
 def _carregar_df_lotofacil():
@@ -500,7 +496,6 @@ def salvar_palpite(palpite, modelo, extras_meta=None):
 # 🔹 Normalização dos nomes de modelo para exibição amigável
 
 # =========================
-
 # INTERFACE (UI)
 # ================================================================
 # 🔧 CONFIGURAÇÃO BASE + IMPORT LAZY (TensorFlow sob demanda)
@@ -1287,7 +1282,6 @@ def atualizar_contador_palpites(id_usuario: int):
     finally:
         db.close()
 
-
 def gerar_palpite_pares_impares(limite=15):
     num_pares = limite // 2
     num_impares = limite - num_pares
@@ -1372,7 +1366,6 @@ def gerar_palpites_por_modelo(modelo: str, qtd: int = 3, k: int = 15):
         tries += 1
 
     return palpites
-
 
 def _model_paths_for(model_name: str, models_dir: str = None):
     """
@@ -1491,7 +1484,6 @@ def carregar_modelo_ls(model_name: str, models_dir=None):
     _MODEL_CACHE[model_name] = metas
     return metas
 
-
 def _load_and_filter_metas_for_plan(model_name, nome_plano, models_dir=None):
     metas = carregar_ensemble_models(model_name, models_dir=models_dir)
     if not metas:
@@ -1530,7 +1522,7 @@ def historico_palpites():
         st.warning("Você precisa estar logado para acessar o histórico.")
         return
 
-    st.markdown("###  Histórico de Palpites")
+    st.markdown("##  Histórico de Palpites / Bets")
 
     # ==============================
     # 🔹 Filtros Superiores
@@ -1691,7 +1683,7 @@ def validar_palpite():
         st.warning("Você precisa estar logado para validar seus Palpites.")
         return
 
-    st.markdown("###  Validar Palpite")
+    st.markdown("## Validar Palpites/ Bets")
 
     db = Session()
     try:
@@ -1829,7 +1821,6 @@ def modelo_por_plano_legacy(nome_plano: str) -> str:
 
     return "ESTAT"
 
-
 def gerar_para_plano_legacy_v0(nome_plano: str, qtd: int = 3, k_escolhido: int | None = None):
     """
     VERSÃO LEGACY — NÃO USAR MAIS.
@@ -1843,7 +1834,6 @@ def gerar_para_plano_legacy_v0(nome_plano: str, qtd: int = 3, k_escolhido: int |
     k = 15 if k_escolhido is None else int(k_escolhido)
     palpites = gerar_palpites_por_modelo(modelo, qtd=qtd, k=k)
     return modelo, k, palpites
-
 
 # ================== [GENERATOR CORE] ==================
 def _amostrar_dezenas(scores_25, k=15, correl_steps=10, pares_range=(6,9)):
@@ -1948,7 +1938,6 @@ PLAN_RULES = {
         "kmin": 15,
         "kmax": 20,
     },
-
 }
 
 # -------------------------------
@@ -2070,7 +2059,6 @@ def _modelo_e_k_por_plano(nome_plano: str, k_escolhido: int | None):
 
     return modelo, k
 
-
 # ============================================================
 # 🔧 PATCH: Função Principal - Dispatcher de Pipeline
 # ============================================================
@@ -2079,7 +2067,6 @@ def _modelo_e_k_por_plano(nome_plano: str, k_escolhido: int | None):
 #   USE_NEW_PIPELINE = os.getenv("USE_NEW_MODEL_PIPELINE", "0") == "1"
 # Não redefina aqui, para não sobrescrever a flag de ambiente.
 # Basta usar USE_NEW_MODEL_PIPELINE=1 no ambiente para ativar o pipeline novo.
-
 
 def verificar_limite_palpites(id_usuario: int):
     """
@@ -2185,7 +2172,6 @@ def verificar_limite_palpites(id_usuario: int):
     finally:
         db.close()
 
-
 # ============ LEGACY ============
 def _gerar_para_plano_legacy(nome_plano, qtd, k_escolhido):
     """
@@ -2203,9 +2189,6 @@ def _gerar_para_plano_legacy(nome_plano, qtd, k_escolhido):
     k = k
 )
     return modelo, k, palpites
-
-
-# ============ PIPELINE NOVO (implementação inicial) ============
 
 # ============================================================
 #          PIPELINE NOVO — FINAL (LS14 / LS15 / LS16)
@@ -2243,7 +2226,6 @@ def gerar_para_plano(nome_plano: str, qtd: int = 3, k_escolhido: int | None = No
     else:
         # pipeline legacy (mantém comportamento atual)
         return _gerar_para_plano_legacy(nome_norm, qtd, k_escolhido)
-
 
 def _gerar_para_plano_novo(nome_plano, qtd, k_escolhido):
     modelo, k = _modelo_e_k_por_plano(nome_plano, k_escolhido)
@@ -2334,7 +2316,6 @@ def _produto_copy_modelo(modelo_key: str) -> tuple[str, str]:
 
     # fallback: devolve como vier
     return (modelo_key, "")
-
 
 # ================================================================
 # Modal FaixaBet — versão estável e funcional (sem congelar tela)
@@ -2587,7 +2568,7 @@ def gerar_palpite_ui_legacy():
     id_usuario = usuario.get("id")
     nome_plano_session = (usuario.get("nome_plano") or "").strip()  # volta a existir
 
-    st.title("Gerar Novas Bets - Lotofácil")
+    st.title(" Gerar Novas Bets - Lotofácil")
 
     # ----------------- 2) Limite de palpites -----------------
 
