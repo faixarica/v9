@@ -434,7 +434,7 @@ def gerar_palpite_ui():
 
 
 
-    st.subheader("🎯 Gerar Palpites — Mega-Sena")
+    st.subheader(" Gerar Palpites — Mega-Sena")
 
     usuario = st.session_state.get("usuario", {})
     if not usuario:
@@ -483,7 +483,7 @@ def gerar_palpite_ui():
         return
 
     motor = cfg_modelo.get("motor")
-    st.caption(f"🧠 {cfg_modelo.get('descricao', '')}")
+    st.caption(f"  {cfg_modelo.get('descricao', '')}")
 
     # Dezenas por regra de negócio
     min_dz, max_dz, disabled_dz = _regras_dezenas(plano_nome, tipo_usuario)
@@ -588,7 +588,7 @@ def gerar_palpite_ui():
     # ============================================================
     # Gerar (botão verde via CSS)
     # ============================================================
-    if st.button("🎲 Gerar Palpites", use_container_width=True, key="ms_v9_btn_gerar", type="primary"):
+    if st.button(" Gerar Palpites / Bets", use_container_width=True, key="ms_v9_btn_gerar", type="primary"):
     
         palpites_gerados = []
 
@@ -603,10 +603,10 @@ def gerar_palpite_ui():
         if tipo_usuario == "U" and bonus_a_consumir > 0:
             _atualizar_bonus_usados(uid, int(bonus_a_consumir))
 
-        st.success(f"✅ {len(palpites_gerados)} palpite(s) gerado(s) e salvo(s)!")
+        st.success(f" {len(palpites_gerados)} palpite(s) gerado(s) e salvo(s)!")
 
         # ✅ "Modal" fechável: expander aberto
-        with st.expander("📋 Palpites Gerados (clique para fechar)", expanded=True):
+        with st.expander(" Palpites Gerados (clique para fechar)", expanded=True):
             for pid, nums, motor_used in palpites_gerados:
                 st.markdown(
                     f"""
@@ -641,7 +641,7 @@ def _evitar_repetidos(dezenas):
 # 📜 Histórico de Palpites (mantido)
 # ================================================================
 def historico_palpites():
-    st.subheader("📜 Histórico de Palpites — Mega-Sena")
+    st.subheader(" Histórico de Palpites — Mega-Sena")
     usuario = st.session_state.get("usuario", {})
     if not usuario:
         st.warning("Você precisa estar logado.")
@@ -691,7 +691,7 @@ def historico_palpites():
 # ✅ Validação de Palpites (mantido)
 # ================================================================
 def validar_palpite():
-    st.subheader("✅ Validar Palpite — Mega-Sena")
+    st.subheader(" Validar Palpite — Mega-Sena")
     usuario = st.session_state.get("usuario", {})
     if not usuario:
         st.warning("Você precisa estar logado.")
@@ -720,7 +720,7 @@ def validar_palpite():
     for r in rows:
         idp, nums, modelo, dt, valido = r
         is_validado = (valido or "").upper() == "S"
-        status_txt = "✅ Validado" if is_validado else "⏳ Pendente"
+        status_txt = " Validado" if is_validado else "⏳ Pendente"
         cor = "#10b981" if is_validado else "#d97706"
 
         st.markdown(
