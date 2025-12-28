@@ -16,7 +16,18 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.join(BASE_DIR, "app")
 
 # ================= MODELS DIR =================
-MODELS_DIR = os.getenv("FAIXABET_MODELS_DIR")
+MODELS_DIR = (
+    os.getenv("FAIXABET_MODELS_DIR")
+    or st.secrets.get("FAIXABET_MODELS_DIR")
+)
+
+if not MODELS_DIR:
+    raise RuntimeError(
+        "❌ FAIXABET_MODELS_DIR não definido no ambiente ou secrets."
+    )
+
+os.environ["FAIXABET_MODELS_DIR"] = MODELS_DIR
+
 
 # 🔹 DEV: modelos já existem (Windows / Linux local)
 #if MODELS_DIR and os.path.exists(MODELS_DIR):
