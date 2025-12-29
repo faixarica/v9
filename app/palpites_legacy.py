@@ -75,7 +75,6 @@ from modelo_llm_max.utils_ls_loader import carregar_modelo_ls
 import streamlit as st
 
 # (opcional) deixa o layout wide, mas não resolve o flash sozinho
-st.set_page_config(layout="wide")
 
 # =========================
 # CONFIG LOG
