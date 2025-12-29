@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-palpites_legacy.py (ex-palpites_v8.15.py)
+palpites_legacy.py (ex-palpites_v8.15.py) v9.11
 Consolidado, compatível com Streamlit e PostgreSQL.
 
 Inclui:
@@ -71,8 +71,6 @@ except Exception:
     _fxb_ls16_ensemble = None
 
 from modelo_llm_max.utils_ls_loader import carregar_modelo_ls
-
-import streamlit as st
 
 # (opcional) deixa o layout wide, mas não resolve o flash sozinho
 
