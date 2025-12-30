@@ -37,11 +37,17 @@ import streamlit as st
 from sqlalchemy import text
 
 from db import Session
+import streamlit.components.v1 as components
+import math
+
+
+# (Função modal antiga removida)
 
 
 # ================================================================
 # 🔧 Imports v9 (registry/dispatcher/engines)
 # ================================================================
+
 try:
     from loterias.megasena.config.models_registry import MEGASENA_MODEL_REGISTRY
 except Exception:
@@ -86,7 +92,6 @@ def _load_engines_registry():
 
     return _ENGINE_MAP
 
-
 # ================================================================
 # 🔧 Utilitários gerais (DB/colunas/contagem)
 # ================================================================
@@ -126,7 +131,6 @@ def _descobrir_colunas_promo_bonus(db) -> Dict[str, Optional[str]]:
         "data": pick("data", "created_at", "dt", "timestamp"),
         "id_client": pick("id_client", "idcliente", "id_usuario", "iduser"),
     }
-
 
 def _get_usuario_ctx(uid: int) -> Dict[str, Any]:
     db = Session()
@@ -212,7 +216,6 @@ def _get_usuario_ctx(uid: int) -> Dict[str, Any]:
     finally:
         db.close()
 
-
 def _regras_dezenas(plano_nome: str, tipo_usuario: str) -> Tuple[int, int, bool]:
     if (tipo_usuario or "").upper() == "A":
         return 6, 20, False
@@ -228,79 +231,34 @@ def _regras_dezenas(plano_nome: str, tipo_usuario: str) -> Tuple[int, int, bool]
         return 6, 20, False
     return 6, 6, True
 
+def _modelos_disponiveis_por_plano(plano_nome: str, tipo_usuario: str):
+    plano = (plano_nome or "").strip().title()
+    tipo_usuario = (tipo_usuario or "").upper()
 
-def _modelos_disponiveis_por_plano(plano_nome: str, tipo_usuario: str) -> Dict[str, Dict[str, Any]]:
-    """
-    Admin (A): vê todos os modelos.
-      - Se registry estiver vazio, devolve fallback admin com TODOS os motores.
-    Usuário (U): vê apenas o modelo do próprio plano (com normalização de chave).
-    """
-    reg = MEGASENA_MODEL_REGISTRY or {}
-
-    # ✅ ADMIN: sempre tem lista "cheia", mesmo se registry não carregou
-    if (tipo_usuario or "").upper() == "A":
-        if reg:
-            return {
-                f"{plano} — {cfg.get('motor')}": {"plano": plano, **cfg}
-                for plano, cfg in reg.items()
-            }
-
-        # Fallback admin (mantém UX e permite testar engines)
+    # Admin / Platinum
+    if tipo_usuario == "A" or plano == "Platinum":
         return {
-            "RANDOM_MS — Aleatório": {
-                "plano": "ALL",
-                "motor": "RANDOM_MS",
-                "descricao": "Aleatório (fallback admin)"
-            },
-            "STAT_MS_V1 — Estatístico": {
-                "plano": "ALL",
-                "motor": "STAT_MS_V1",
-                "descricao": "Estatístico v1 (fallback admin)"
-            },
-            "STAT_MS_V2 — Estatístico+": {
-                "plano": "ALL",
-                "motor": "STAT_MS_V2",
-                "descricao": "Estatístico v2 (fallback admin)"
-            },
-            "MS17_V5 — IA Platinum": {
-                "plano": "ALL",
-                "motor": "MS17_V5",
-                "descricao": "IA Neural Mega-Sena (Admin)"
-            },
+            "RANDOM_MS": {"motor": "RANDOM_MS", "descricao": "Aleatório"},
+            "STAT_MS_V1": {"motor": "STAT_MS_V1", "descricao": "Estatístico v1"},
+            "STAT_MS_V2": {"motor": "STAT_MS_V2", "descricao": "Estatístico v2"},
+            "MS17_V5": {"motor": "MS17_V5", "descricao": "IA Neural"},
         }
 
-    # ✅ USUÁRIO: usa registry; se não existir, fallback seguro
-    if not reg:
+    if plano == "Silver":
         return {
-            "Fallback — Aleatório": {
-                "plano": "Free",
-                "motor": "RANDOM_MS",
-                "descricao": "Fallback de segurança (registry vazio)"
-            }
+            "STAT_MS_V1": {"motor": "STAT_MS_V1", "descricao": "Estatístico v1"}
         }
 
-    plano_key = (plano_nome or "").strip().title()
-    cfg = reg.get(plano_key)
-
-    if not cfg:
-        cfg = reg.get("Free") or next(iter(reg.values()), None)
-
-    if not cfg:
+    if plano == "Gold":
         return {
-            "Fallback — Aleatório": {
-                "plano": "Free",
-                "motor": "RANDOM_MS",
-                "descricao": "Fallback absoluto"
-            }
+            "STAT_MS_V2": {"motor": "STAT_MS_V2", "descricao": "Estatístico v2"},
+            "MS17_V5": {"motor": "MS17_V5", "descricao": "IA Neural"},
         }
 
+    # Free
     return {
-        f"{plano_key} — {cfg.get('motor')}": {
-            "plano": plano_key,
-            **cfg
-        }
+        "RANDOM_MS": {"motor": "RANDOM_MS", "descricao": "Aleatório"}
     }
-
 
 def _render_dezenas_circulos(dezenas):
     st.markdown(
@@ -315,7 +273,6 @@ def _render_dezenas_circulos(dezenas):
         + "</div>",
         unsafe_allow_html=True,
     )
-
 
 # ================================================================
 # 💾 Salvamento (retorna ID)
@@ -392,7 +349,6 @@ def _atualizar_bonus_usados(uid: int, incrementar: int) -> None:
     finally:
         db.close()
 
-
 # ================================================================
 # 🧠 Engines dispatch
 # ================================================================
@@ -405,11 +361,232 @@ def _gerar_por_motor(motor: str, qtd_dezenas: int):
 
     return sorted(random.sample(range(1, 61), int(qtd_dezenas)))
 
+import html
+import streamlit as st
+
+def _ms_handle_close_queryparam():
+    """
+    Fecha modal via query param (?close_ms=1) e limpa estado.
+    Compatível com versões antigas/novas do Streamlit.
+    """
+    # pegar query params
+    qp = {}
+    try:
+        # streamlit >= 1.30 (aprox) tem st.query_params
+        qp = dict(st.query_params)
+    except Exception:
+        try:
+            qp = st.experimental_get_query_params()
+        except Exception:
+            qp = {}
+
+    if "close_ms" in qp:
+        st.session_state["ms_show_result"] = False
+        st.session_state["ms_palpites_result"] = []
+
+        # limpar query param
+        try:
+            st.query_params.clear()
+        except Exception:
+            try:
+                st.experimental_set_query_params()
+            except Exception:
+                pass
+
+        st.rerun()
+
+
+def _render_ms_overlay(palpites):
+    """
+    Renderiza modal usando components.html (iframe isolado).
+    Isso evita congelamento da UI principal e garante execução do JS.
+    """
+    # 1. Monta HTML dos cards
+    cards_html_list = []
+    
+    for i, p in enumerate(palpites, start=1):
+        pid = str(p.get("id", "-"))
+        
+        # Garante lista de int
+        nums_raw = p.get("numeros", [])
+        if isinstance(nums_raw, str):
+             try:
+                 nums = [int(x) for x in nums_raw.split() if x.isdigit()]
+             except:
+                 nums = []
+        else:
+             nums = nums_raw
+
+        bolas_html = "".join([f"<span class='fxb-bola'>{int(n):02d}</span>" for n in nums])
+        
+        # Dezenas texto para cópia
+        n_str = " ".join(f"{x:02d}" for x in nums)
+        
+        card = (
+            f"<div class='fxb-card' data-copy='{n_str}'>"
+            f"<div class='fxb-card-id'>#{i} · ID {pid}</div>"
+            f"<div class='fxb-bolas'>{bolas_html}</div>"
+            f"</div>"
+        )
+        cards_html_list.append(card)
+
+    cards_joined = "".join(cards_html_list)
+    palpites_summary = "\\n".join(
+        [f"ID {p.get('id')}: " + " ".join(f"{x:02d}" for x in (p.get("numeros") or [])) for p in palpites]
+    ).replace("`", "\\`")
+
+    # 2. HTML Completo (Full Screen Iframe Hack)
+    
+    rows = math.ceil(max(1, len(palpites)) / 3)
+    # Altura suficiente para o iframe não cortar conteúdo interno
+    fallback_height = max(400, min(1100, 240 + rows * 100))
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <meta charset="utf-8" />
+            <style>
+                :root {{
+                    --brand: #10b981;
+                    --bg-dim: rgba(0,0,0,0.75);
+                }}
+                html, body {{
+                    margin:0; padding:0;
+                    font-family: system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+                    background: transparent;
+                }}
+                .overlay {{
+                    position: fixed; inset:0;
+                    background: var(--bg-dim);
+                    display:flex; align-items:center; justify-content:center;
+                    backdrop-filter: blur(4px);
+                    animation: fadeIn 0.3s ease-out;
+                }}
+                @keyframes fadeIn {{ from {{ opacity:0; }} to {{ opacity:1; }} }}
+                
+                .modal {{
+                    position: relative;
+                    width: min(900px, 94vw);
+                    max-height: 88vh; overflow:auto;
+                    background:#fff;
+                    border:2px solid var(--brand);
+                    border-radius:16px;
+                    box-shadow:0 20px 50px rgba(0,0,0,0.5);
+                    padding:20px 22px;
+                    display: flex; flex-direction: column;
+                }}
+                .header {{
+                    display:flex; justify-content:space-between; align-items:center;
+                    margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;
+                }}
+                .title {{ font-weight:800; color:var(--brand); font-size:20px; }}
+                .actions {{ display:flex; gap:10px; }}
+                
+                button {{
+                    cursor:pointer; font-weight:700; border:none; border-radius:8px;
+                    padding:8px 16px; transition:0.2s; font-size:14px;
+                }}
+                .btn-copy {{ background:#e0e7ff; color:#4338ca; }}
+                .btn-copy:hover {{ background:#c7d2fe; }}
+                .btn-close {{ background:#fee2e2; color:#dc2626; }}
+                .btn-close:hover {{ background:#fecaca; }}
+                
+                .grid {{
+                    display:grid; gap:12px;
+                    grid-template-columns: repeat(auto-fit, minmax(240px,1fr));
+                }}
+                .fxb-card {{
+                    background:#f9fafb; border:1px solid var(--brand);
+                    border-radius:12px; padding:10px; text-align:center;
+                }}
+                .fxb-card-id {{ font-size:12px; color:#555; font-weight:bold; margin-bottom:5px; }}
+                .fxb-bolas {{ display:flex; justify-content:center; flex-wrap:wrap; gap:5px; }}
+                .fxb-bola {{
+                    width:32px; height:32px; border-radius:50%; background:var(--brand);
+                    color:#fff; font-weight:bold; display:flex; align-items:center;
+                    justify-content:center;
+                }}
+                .info {{ text-align:center; color:#666; font-size:13px; margin-bottom:10px; }}
+            </style>
+        </head>
+        <body>
+            <div class="overlay" id="ms-overlay">
+                <div class="modal">
+                    <div class="header">
+                        <div class="title">🎯 Resultado Mega-Sena</div>
+                        <div class="actions">
+                            <button class="btn-copy" id="ms-copy">📋 Copiar Tudo</button>
+                            <button class="btn-close" id="ms-close">✖ Fechar</button>
+                        </div>
+                    </div>
+                    <div class="info">{len(palpites)} palpite(s) gerado(s).</div>
+                    <div class="grid">
+                        {cards_joined}
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+            (function(){{
+                const allText = `{palpites_summary}`;
+                const iframe = window.frameElement;
+                
+                // 1. Full Screen Hack
+                if(iframe){{
+                    iframe.style.position='fixed';
+                    iframe.style.top='0'; iframe.style.left='0';
+                    iframe.style.width='100vw'; iframe.style.height='100vh';
+                    iframe.style.zIndex='999999';
+                    iframe.style.background='transparent';
+                }}
+
+                // 2. Actions
+                document.getElementById('ms-close').onclick = function(){{
+                    if(iframe){{
+                        iframe.remove();
+                    }}
+                }};
+                
+                document.getElementById('ms-copy').onclick = function(){{
+                    if(navigator.clipboard && navigator.clipboard.writeText){{
+                        navigator.clipboard.writeText(allText)
+                        .then(()=>alert("Copiado com sucesso!"))
+                        .catch(err=>fallbackCopy(allText));
+                    }} else {{
+                        fallbackCopy(allText);
+                    }}
+                }};
+                
+                function fallbackCopy(txt){{
+                    try {{
+                        const ta = document.createElement("textarea");
+                        ta.value = txt;
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand("copy");
+                        document.body.removeChild(ta);
+                        alert("Copiado (Fallback)");
+                    }} catch(e){{
+                        alert("Erro ao copiar");
+                    }}
+                }}
+
+            }})();
+            </script>
+        </body>
+    </html>
+    """
+
+    # Renderiza o componente IFRAME
+    components.html(html_content, height=fallback_height, scrolling=False)
 
 # ================================================================
 # 🎯 UI – Gerar Palpite Mega-Sena (v9)
 # ================================================================
 def gerar_palpite_ui():
+     # Fecha overlay via ?close_ms=1 (X do modal)
+    _ms_handle_close_queryparam()
     # ✅ CSS: botão verde + alinhamento visual (aplica 1x por sessão)
     if "ms_v9_css_injetado" not in st.session_state:
         st.markdown("""<style>...</style>""", unsafe_allow_html=True)
@@ -431,8 +608,6 @@ def gerar_palpite_ui():
     }
     </style>
     """, unsafe_allow_html=True)
-
-
 
     st.subheader(" Gerar Palpites — Mega-Sena")
 
@@ -497,9 +672,6 @@ def gerar_palpite_ui():
     )
 
     # ============================================================
-    # Qtde palpites por solicitação (ESTÁVEL)
-    # ============================================================
-    # ============================================================
     # Qtde palpites por solicitação (DEFINITIVO / SEM BUG)
     # ============================================================
     st.markdown("### Quantos palpites gerar agora?")
@@ -543,7 +715,7 @@ def gerar_palpite_ui():
 
     qtd_palpites = int(st.session_state["ms_qtd_palpites"])
 
-    st.success(f"DEBUG FINAL → qtd_palpites = {qtd_palpites}")
+    # st.success(f"DEBUG FINAL → qtd_palpites = {qtd_palpites}")
 
 
     # ============================================================
@@ -584,43 +756,48 @@ def gerar_palpite_ui():
     st.write(msg_limite)
     if not permitido:
         return
-
     # ============================================================
     # Gerar (botão verde via CSS)
     # ============================================================
-    if st.button(" Gerar Palpites / Bets", use_container_width=True, key="ms_v9_btn_gerar", type="primary"):
-    
+    if st.button(
+        "🚀 Gerar Novos Palpites",
+        use_container_width=True,
+        key="ms_v9_btn_gerar",
+        type="primary"
+    ):
         palpites_gerados = []
 
         for _ in range(qtd_palpites):
             dezenas_list = _gerar_por_motor(str(motor), int(dezenas))
             dezenas_list = _evitar_repetidos(dezenas_list)
             dezenas_fmt = " ".join(f"{n:02d}" for n in dezenas_list)
-
             novo_id = salvar_palpite_m(uid, dezenas_fmt, str(motor))
-            palpites_gerados.append((novo_id, dezenas_list, str(motor)))
+            print(f"DEBUG: saved palpite id={novo_id}") # LOG
 
+            palpites_gerados.append({
+                "id": novo_id,
+                "numeros": sorted(dezenas_list),
+                "motor": str(motor),
+            })
+
+        # 🔒 Consumo de bônus SÓ se gerou
         if tipo_usuario == "U" and bonus_a_consumir > 0:
+            print(f"DEBUG: consuming bonus {bonus_a_consumir}") # LOG
             _atualizar_bonus_usados(uid, int(bonus_a_consumir))
 
-        st.success(f" {len(palpites_gerados)} palpite(s) gerado(s) e salvo(s)!")
+        # ⚠️ Se por algum motivo extremo não gerou nada
+        if len(palpites_gerados) == 0:
+            st.error("❌ Não foi possível gerar palpites.")
+            return
 
-        # ✅ "Modal" fechável: expander aberto
-        with st.expander(" Palpites Gerados (clique para fechar)", expanded=True):
-            for pid, nums, motor_used in palpites_gerados:
-                st.markdown(
-                    f"""
-                    <div style="border:2px solid #10b981; border-radius:14px; padding:10px; margin:10px 0; background:#f9fafb;">
-                      <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div><b>ID:</b> {pid if pid is not None else "-"}</div>
-                        <div style="opacity:0.85;"><b>Modelo:</b> {motor_used}</div>
-                      </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-                _render_dezenas_circulos(nums)
+        # =========================================================
+        # RENDERIZAÇÃO IMEDIATA (Component iframe)
+        # =========================================================
+        # Sem guardar no session_state para evitar conflito de reload
+        _render_ms_overlay(palpites_gerados)
 
+
+    # (Fim da lógica de botão. Não há mais bloco persistente aqui.)
 
 # ================================================================
 # Reaproveitado (com tolerância)
@@ -635,7 +812,6 @@ def _evitar_repetidos(dezenas):
         return dezenas
     except Exception:
         return dezenas
-
 
 # ================================================================
 # 📜 Histórico de Palpites (mantido)
@@ -685,7 +861,6 @@ def historico_palpites():
             """,
             unsafe_allow_html=True,
         )
-
 
 # ================================================================
 # ✅ Validação de Palpites (mantido)
