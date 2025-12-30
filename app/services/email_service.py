@@ -70,15 +70,17 @@ def enviar_email_reset(
               </a>
             </p>
 
-            <p>⏱️ Este link é válido por <strong>{minutos_validade} minutos</strong>. Após esse período, solicite novamente.</p>
+            <p> Este link é válido por <strong>{minutos_validade} minutos</strong>. Após esse período, solicite novamente.</p>
 
             <hr style="margin:22px 0;">
 
-            <p><strong>Passo a passo:</strong></p>
+            <p><strong>Passo a passo para você redefinir sua nova senha:</strong></p>
             <ol>
-              <li>Clique no botão acima.</li>
-              <li>Crie uma nova senha segura.</li>
-              <li>Confirme e acesse sua conta normalmente.</li>
+              <li>Ao clicar no botão verde acima.</li>
+              <li>Você será redirecionado para a página da aplicação fAIxaBet.</li>
+              <li>A pagina  Redefinir senha será carregada. <li>
+              <li>Informe sua nova senha.</li>
+              <li>Confirme sua nova senha e clique no salvar nova.senhali>
             </ol>
 
             <p style="color:#555;">
@@ -88,7 +90,7 @@ def enviar_email_reset(
 
             <hr style="margin:22px 0;">
             <p style="font-size:12px;color:#777;margin-bottom:0;">
-              fAIxaBet® — Inteligência aplicada à loteria<br>
+              fAIxaBet® — Inteligência aplicada à loterias<br>
               Este é um e-mail automático. Não responda.
             </p>
           </div>
@@ -106,7 +108,8 @@ def enviar_email_reset(
     r = requests.post(url, json=payload, headers=headers, timeout=10)
 
     if r.status_code not in (200, 201, 202):
-        raise RuntimeError(f"Erro Brevo {r.status_code}: {r.text}")
+        logging.error(f"Erro Brevo {r.status_code}: {r.text}")
+        return False
 
 
 

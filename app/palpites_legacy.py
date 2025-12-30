@@ -2725,7 +2725,7 @@ def gerar_palpite_ui_legacy():
 )
 
     # ----------------- 4) Botão de gerar -----------------
-    if st.button(" Gerar Bets agora", type="primary"):
+    if st.button(" Gerar Novos Palpites", type="primary"):
         # === Loader simples visível imediatamente ===
         status = st.empty()
 

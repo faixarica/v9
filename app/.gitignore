@@ -1,8 +1,0 @@
-# Ignorar arquivos e pastas sensíveis
-.env
-
-__pycache__/
-*.pyc
-nao vai pro git/
-backend/
-

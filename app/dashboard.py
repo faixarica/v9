@@ -25,7 +25,7 @@ def apply_custom_css():
 
             /* Remove espaço superior padrão do Streamlit */
             .block-container {
-                padding-top: 1rem !important;
+                padding-top: 2rem !important;
             }
 
             /* Remove margem automática após imagens (logo) */
@@ -45,7 +45,7 @@ def apply_custom_css():
                =============================== */
 
             .card {
-                padding: 15px;
+                padding: 12px;
                 margin: 10px 0;
                 border-left: 6px solid #6C63FF;
                 border-radius: 10px;
