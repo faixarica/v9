@@ -1,75 +1,8 @@
-# ===============================
-# 🔒 SEGURANÇA / CREDENCIAIS
-# ===============================
+# Ignorar arquivos e pastas sensíveis
 .env
-.env.*
-*.key
-*.pem
 
-# ===============================
-# 🧠 MODELOS & DADOS (NUNCA PÚBLICO)
-# ===============================
-**/models/**
-**/dados/**
-**/dados_m/**
-**/*.npy
-**/*.npz
-**/*.keras
-**/*.h5
-**/*.pkl
-**/*.joblib
-
-# ===============================
-# 📊 OUTPUTS / LOGS
-# ===============================
-logs/
-**/logs/**
-output/
-summaries/
-deploy_log
-*.log
-*.html
-
-# ===============================
-# 🧪 TESTES / EXPERIMENTOS
-# ===============================
-email-test/
-test-*
-*_test.py
-
-# ===============================
-# 🐍 PYTHON
-# ===============================
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
-.venv/
-venv/
-.python-version
-
-# ===============================
-# 🖥️ STREAMLIT / RUNTIME
-# ===============================
-.streamlit/secrets.toml
-.cache/
-
-# ===============================
-# 🪟 WINDOWS
-# ===============================
-Thumbs.db
-desktop.ini
-
-# ===============================
-# 📄 OUTROS
-# ===============================
-.DS_Store
-.idea/
-.vscode/
-
-# SCRIPTS INTERNOS / AUXILIARES
-email-test.py
-update_all_lf_models.ps1
-deploy*
-*.ps1
+nao vai pro git/
+backend/
 
