@@ -70,7 +70,7 @@ def enviar_email_reset(
               </a>
             </p>
 
-            <p> Este link é válido por <strong>{minutos_validade} minutos</strong>. Após esse período, solicite novamente.</p>
+            <p> Este link estará válido por <strong>{minutos_validade} minutos</strong>. Após esse período, solicite novamente.</p>
 
             <hr style="margin:22px 0;">
 
