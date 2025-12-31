@@ -1,109 +1,154 @@
-# usuario.py - informa qtde de usuarios cadastrados e seus planos
+# usuario.py - administração de usuários (visão ADM)
+
 import streamlit as st
 from sqlalchemy import text
 from db import Session
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 import logging
+import calendar
+from .email_notificar_user import enviar_email_usuario
 
 logger = logging.getLogger(__name__)
 
+# =========================================================
+# HELPERS
+# =========================================================
+
 def _format_date(value):
-    """Formata dt_cadastro de forma resiliente."""
     if value is None:
         return "-"
     if isinstance(value, datetime):
         return value.strftime("%d/%m/%Y")
     try:
-        # tenta interpretar ISO-like strings
         return datetime.fromisoformat(str(value)).strftime("%d/%m/%Y")
     except Exception:
         return str(value)
 
+
+def _percentual(acertos, total):
+    if not total or total == 0:
+        return "0%"
+    return f"{(acertos / total) * 100:.1f}%"
+
+
+# =========================================================
+# MAIN
+# =========================================================
 def listar_usuarios():
-    st.markdown("### 👥 Usuários Cadastrados")
+    st.markdown("## 👥 Administração de Usuários")
 
     try:
-        # usa context manager para garantir fechamento da sessão
         with Session() as db:
             result = db.execute(text("""
-                SELECT usuarios.usuario, usuarios.tipo, usuarios.id_plano, usuarios.dt_cadastro, planos.nome AS nome_plano
-                FROM usuarios
-                LEFT JOIN planos ON planos.id = usuarios.id_plano
-                ORDER BY usuarios.dt_cadastro DESC
+                SELECT
+                    u.id,
+                    u.usuario,
+                    u.email,
+                    u.tipo,
+                    u.dt_cadastro,
+                    COALESCE(p.nome, 'Free') AS plano,
+
+                    (
+                        SELECT COUNT(*) FROM palpites pl
+                        WHERE pl.id_usuario = u.id
+                    ) +
+                    (
+                        SELECT COUNT(*) FROM palpites_m pm
+                        WHERE pm.id_usuario = u.id
+                    ) AS total_palpites
+
+                FROM usuarios u
+                LEFT JOIN planos p ON p.id = u.id_plano
+                ORDER BY u.dt_cadastro DESC
             """))
+
             rows = result.fetchall()
 
         if not rows:
             st.info("Nenhum usuário cadastrado.")
             return
 
-        # --- Contadores por plano ---
-        total_free = sum(1 for r in rows if str(r.nome_plano or "").lower().startswith("free"))
-        total_silver = sum(1 for r in rows if str(r.nome_plano or "").lower().startswith("silver"))
-        total_gold = sum(1 for r in rows if str(r.nome_plano or "").lower().startswith("gold"))
+        # ===============================
+        # RESUMO POR PLANO
+        # ===============================
         total = len(rows)
+        total_free = sum(1 for r in rows if r.plano.lower().startswith("free"))
+        total_silver = sum(1 for r in rows if r.plano.lower().startswith("silver"))
+        total_gold = sum(1 for r in rows if r.plano.lower().startswith("gold"))
+        total_platinum = sum(1 for r in rows if r.plano.lower().startswith("platinum"))
 
-        # --- Cards de resumo ---
         st.markdown(
             f"""
-            <div style='display:flex; justify-content:space-around; margin-bottom:20px; flex-wrap:wrap; gap:8px;'>
-                <div style='background:#e9f5ff; padding:10px 20px; border-radius:10px; text-align:center; min-width:130px;'>
-                    <div style='font-size:16px; font-weight:bold; color:#007bff;'>Free</div>
-                    <div style='font-size:22px; font-weight:bold;'>{total_free}</div>
-                </div>
-                <div style='background:#f3f0ff; padding:10px 20px; border-radius:10px; text-align:center; min-width:130px;'>
-                    <div style='font-size:16px; font-weight:bold; color:#6f42c1;'>Silver</div>
-                    <div style='font-size:22px; font-weight:bold;'>{total_silver}</div>
-                </div>
-                <div style='background:#fff7e6; padding:10px 20px; border-radius:10px; text-align:center; min-width:130px;'>
-                    <div style='font-size:16px; font-weight:bold; color:#f0ad4e;'>Gold</div>
-                    <div style='font-size:22px; font-weight:bold;'>{total_gold}</div>
-                </div>
-                <div style='background:#f8f9fa; padding:10px 20px; border-radius:10px; text-align:center; min-width:130px;'>
-                    <div style='font-size:16px; font-weight:bold; color:#333;'>Total</div>
-                    <div style='font-size:22px; font-weight:bold;'>{total}</div>
-                </div>
+            <div style='display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px;'>
+                <div class='card'>Free<br><b>{total_free}</b></div>
+                <div class='card'>Silver<br><b>{total_silver}</b></div>
+                <div class='card'>Gold<br><b>{total_gold}</b></div>
+                <div class='card'>Platinum<br><b>{total_platinum}</b></div>
+                <div class='card'>Total<br><b>{total}</b></div>
             </div>
             """,
             unsafe_allow_html=True
         )
 
-        # --- Cards de usuários ---
+        # ===============================
+        # LISTAGEM EM 2 COLUNAS
+        # ===============================
         for i in range(0, len(rows), 2):
             cols = st.columns(2)
+
             for j in range(2):
-                if i + j < len(rows):
-                    r = rows[i + j]
-                    usuario = r.usuario
-                    tipo = str(r.tipo or "").upper()
-                    plano = r.nome_plano or "Free"
-                    data_fmt = _format_date(r.dt_cadastro)
+                if i + j >= len(rows):
+                    continue
 
-                    cor_tipo = "#007bff" if tipo == "ADM" else "#28a745"
-                    cor_plano = (
-                        "#f0ad4e" if plano.lower().startswith("gold")
-                        else "#6f42c1" if plano.lower().startswith("silver")
-                        else "#17a2b8"
-                    )
+                r = rows[i + j]
 
-                    with cols[j]:
-                        st.markdown(f"""
-                            <div style='background:#fff; padding:14px 16px; border-radius:12px;
-                                        border:1px solid #ddd; margin-bottom:14px;
-                                        box-shadow:0 2px 4px rgba(0,0,0,0.08);'>
-                                <div style='font-size:15px; font-weight:bold; color:#333;'>👤 {usuario}</div>
-                                <div style='font-size:13px; margin-top:4px; line-height:1.4;'>
-                                    <span style='color:{cor_tipo}; font-weight:500;'>Tipo:</span> {tipo}<br>
-                                    <span style='color:{cor_plano}; font-weight:500;'>Plano:</span> {plano}<br>
-                                    <span style='color:#999;'>Cadastrado em:</span> {data_fmt}
-                                </div>
-                            </div>
+                with cols[j]:
+                    st.markdown(f"""
+                        <div style="background:#fff; padding:14px; border-radius:12px;
+                                    border:1px solid #ddd; margin-bottom:12px;
+                                    box-shadow:0 2px 4px rgba(0,0,0,0.06);">
+                        <b>👤 {r.usuario}</b><br>
+                        <span style="color:#555;">📧 {r.email or '-'}</span><br><br>
+
+                        Tipo: <b>{r.tipo}</b><br>
+                        Plano: <b>{r.plano}</b><br>
+                        Cadastro: {_format_date(r.dt_cadastro)}<br>
+                        Palpites gerados: <b>{r.total_palpites}</b><br>
+                        Eficiência: <b>—</b>
+                        </div>
                         """, unsafe_allow_html=True)
 
-    except SQLAlchemyError as db_err:
-        logger.exception("Erro ao executar query em listar_usuarios")
-        st.error("Erro ao carregar usuários (problema no banco de dados). Verifique os logs.")
-    except Exception as e:
+
+                    col_a, col_b = st.columns([2, 1])
+
+                    with col_a:
+                        mes = st.selectbox(
+                            "Mês",
+                            list(range(1, 13)),
+                            format_func=lambda x: f"{x:02d}",
+                            key=f"mes_{r.id}"
+                        )
+
+                    with col_b:
+                        st.markdown("""
+                            <style>
+                            div.stButton > button {
+                                background-color: #28a745;
+                                color: white;
+                                border-radius: 8px;
+                                font-weight: 600;
+                            }
+                            </style>
+                        """, unsafe_allow_html=True)
+
+                        if st.button("📧 Enviar", key=f"email_{r.id}"):
+                            enviar_email_usuario(user_id=r.id, mes=mes)
+                            st.success("E-mail enviado!")
+
+    except SQLAlchemyError:
+        logger.exception("Erro SQL em listar_usuarios")
+        st.error("Erro ao carregar usuários (banco de dados).")
+    except Exception:
         logger.exception("Erro inesperado em listar_usuarios")
-        st.error("Erro inesperado ao listar usuários. Verifique os logs.")
+        st.error("Erro inesperado ao listar usuários.")
