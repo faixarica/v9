@@ -419,12 +419,12 @@ def main():
 
     if tipo_user in ["A", "ADM", "ADMIN"]:
         menu_itens = [
-            "Painel Estatístico",
-            "Gerar Novas Bets",
+            "Painel estatístico",
+            "Gerar novos palpites",
             "Histórico",
-            "Validar Bets Gerada",
-            "Assinatura ",
-            "Editar Perfil",
+            "Validar palpites gerados",
+            "Assinatura - plano ",
+            "Editar perfil",
             "Telemetria",
             "Usuários",
             "Notificar",
@@ -434,37 +434,37 @@ def main():
         ]
     else:
         menu_itens = [
-            "Painel Estatístico",
-            "Gerar Novas Bets",
+            "Painel estatístico",
+            "Gerar novos palpites",
             "Histórico",
-            "Validar Bets Gerada",
-            "Assinatura ",
-            "Editar Perfil",
+            "Validar palpites geradosa",
+            "Assinatura - plano ",
+            "Editar eerfil",
             "Sair",
         ]
 
     opcao_selecionada = st.sidebar.radio(" ", menu_itens)
 
-    if opcao_selecionada == "Painel Estatístico":
+    if opcao_selecionada == "Painel estatístico":
         mostrar_dashboard()
 
-    elif opcao_selecionada in ["Gerar Novas Bets", "Histórico", "Validar Bets Gerada"]:
+    elif opcao_selecionada in ["Gerar novos palpites", "Histórico", "Validar palpites gerados"]:
         if loteria_escolhida == "Mega-Sena":
             from mega.palpites_m import gerar_palpite_ui, historico_palpites, validar_palpite
         else:
             from app.palpites_legacy import gerar_palpite_ui, historico_palpites, validar_palpite
 
-        if opcao_selecionada == "Gerar Novas Bets":
+        if opcao_selecionada == "Gerar novos palpites":
             gerar_palpite_ui()
         elif opcao_selecionada == "Histórico":
             historico_palpites()
         else:
             validar_palpite()
 
-    elif opcao_selecionada == "Assinatura ":
+    elif opcao_selecionada == "Assinatura - plano ":
         exibir_aba_financeiro()
 
-    elif opcao_selecionada == "Editar Perfil":
+    elif opcao_selecionada == "Editar perfil":
         editar_perfil(usuario_ss.get("id"))
 
     elif opcao_selecionada == "Telemetria":
