@@ -497,7 +497,7 @@ def main():
         with col2:
             st.markdown("""
                 <div style="
-                    padding: 30px;
+                    padding: 31px;
                     border-radius: 16px;
                     background-color: #f0f2f6;
                     text-align: center;
@@ -523,4 +523,4 @@ def main():
         logout()
 
 
-    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.11</div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.12 </div>", unsafe_allow_html=True)
