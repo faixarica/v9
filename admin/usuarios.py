@@ -1,13 +1,15 @@
 # usuario.py - administração de usuários (visão ADM)
 
+import os
 import streamlit as st
 from sqlalchemy import text
 from db import Session
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 import logging
-import calendar
 from .email_notificar_user import enviar_email_usuario
+from .email_estatisticas_user import enviar_email_estatisticas_usuario
+
 
 logger = logging.getLogger(__name__)
 
@@ -26,21 +28,32 @@ def _format_date(value):
         return str(value)
 
 
-def _percentual(acertos, total):
-    if not total or total == 0:
-        return "0%"
-    return f"{(acertos / total) * 100:.1f}%"
-
-
 # =========================================================
 # MAIN
 # =========================================================
 def listar_usuarios():
     st.markdown("## 👥 Administração de Usuários")
 
+    # ===============================
+    # FILTROS
+    # ===============================
+    col_f1, col_f2 = st.columns(2)
+
+    with col_f1:
+        filtro_nome = st.text_input(
+            "🔍 Filtrar por nome do usuário",
+            placeholder="Ex: joão, maria, dudis"
+        ).strip().lower()
+
+    with col_f2:
+        filtro_email = st.text_input(
+            "🔍 Filtrar por e-mail",
+            placeholder="Ex: gmail.com, @hotmail"
+        ).strip().lower()
+
     try:
         with Session() as db:
-            result = db.execute(text("""
+            rows = db.execute(text("""
                 SELECT
                     u.id,
                     u.usuario,
@@ -48,7 +61,6 @@ def listar_usuarios():
                     u.tipo,
                     u.dt_cadastro,
                     COALESCE(p.nome, 'Free') AS plano,
-
                     (
                         SELECT COUNT(*) FROM palpites pl
                         WHERE pl.id_usuario = u.id
@@ -57,16 +69,22 @@ def listar_usuarios():
                         SELECT COUNT(*) FROM palpites_m pm
                         WHERE pm.id_usuario = u.id
                     ) AS total_palpites
-
                 FROM usuarios u
                 LEFT JOIN planos p ON p.id = u.id_plano
                 ORDER BY u.dt_cadastro DESC
-            """))
+            """)).fetchall()
 
-            rows = result.fetchall()
+        # ===============================
+        # APLICAR FILTROS
+        # ===============================
+        if filtro_nome:
+            rows = [r for r in rows if filtro_nome in (r.usuario or "").lower()]
+
+        if filtro_email:
+            rows = [r for r in rows if filtro_email in (r.email or "").lower()]
 
         if not rows:
-            st.info("Nenhum usuário cadastrado.")
+            st.warning("🔎 Nenhum usuário encontrado com os filtros aplicados.")
             return
 
         # ===============================
@@ -102,6 +120,7 @@ def listar_usuarios():
                     continue
 
                 r = rows[i + j]
+                card_key = f"u{r.id}_i{i}_j{j}"
 
                 with cols[j]:
                     st.markdown(f"""
@@ -110,27 +129,32 @@ def listar_usuarios():
                                     box-shadow:0 2px 4px rgba(0,0,0,0.06);">
                         <b>👤 {r.usuario}</b><br>
                         <span style="color:#555;">📧 {r.email or '-'}</span><br><br>
-
                         Tipo: <b>{r.tipo}</b><br>
                         Plano: <b>{r.plano}</b><br>
                         Cadastro: {_format_date(r.dt_cadastro)}<br>
                         Palpites gerados: <b>{r.total_palpites}</b><br>
                         Eficiência: <b>—</b>
                         </div>
-                        """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
 
-
-                    col_a, col_b = st.columns([2, 1])
+                    col_a, col_b, col_c = st.columns([2, 2, 1])
 
                     with col_a:
                         mes = st.selectbox(
                             "Mês",
                             list(range(1, 13)),
                             format_func=lambda x: f"{x:02d}",
-                            key=f"mes_{r.id}"
+                            key=f"mes_{card_key}"
                         )
 
                     with col_b:
+                        ano = st.selectbox(
+                            "Ano",
+                            list(range(datetime.now().year, datetime.now().year - 5, -1)),
+                            key=f"ano_{card_key}"
+                        )
+
+                    with col_c:
                         st.markdown("""
                             <style>
                             div.stButton > button {
@@ -142,9 +166,21 @@ def listar_usuarios():
                             </style>
                         """, unsafe_allow_html=True)
 
-                        if st.button("📧 Enviar", key=f"email_{r.id}"):
-                            enviar_email_usuario(user_id=r.id, mes=mes)
-                            st.success("E-mail enviado!")
+                        if st.button("📧 Enviar", key=f"email_{card_key}"):
+                            enviar_email_usuario(
+                                user_id=r.id,
+                                mes=mes,
+                                ano=ano
+                            )
+                            st.success(f"E-mail enviado ({mes:02d}/{ano})")
+                        if st.button("📊 Estatísticas", key=f"stats_{card_key}"):
+                            enviar_email_estatisticas_usuario(
+                                user_id=r.id,
+                                mes=mes,
+                                ano=ano
+                            )
+                            st.success("Relatório de estatísticas enviado!")
+
 
     except SQLAlchemyError:
         logger.exception("Erro SQL em listar_usuarios")
