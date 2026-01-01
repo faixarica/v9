@@ -426,7 +426,7 @@ def main():
             "Assinatura - plano ",
             "Editar perfil",
             "Telemetria",
-            "Usuários",
+            "Usuários - adm ",
             "Notificar",
             "Resultados",
             "Evolução",
@@ -471,7 +471,7 @@ def main():
         from app.dashboard import mostrar_telemetria
         mostrar_telemetria()
 
-    elif opcao_selecionada == "Usuários":
+    elif opcao_selecionada == "Usuários - adm":
         from admin.usuarios import listar_usuarios
         listar_usuarios()
 
