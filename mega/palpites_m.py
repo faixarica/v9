@@ -76,19 +76,24 @@ def _load_engines_registry():
         return _ENGINE_MAP
 
     candidates = [
-        ("RANDOM_MS", "loterias.megasena.engines.random_ms"),
-        ("STAT_MS_V1", "loterias.megasena.engines.stat_ms_v1"),
-        ("STAT_MS_V2", "loterias.megasena.engines.stat_ms_v2"),
-        ("MS17_V5", "loterias.megasena.engines.ms17_v5_engine"),
+        ("RANDOM_MS", "mega.engines.random_ms"),
+        ("STAT_MS_V1", "mega.engines.stat_ms_v1"),
+        ("STAT_MS_V2", "mega.engines.stat_ms_v2"),
+        ("MS17_V5", "mega.engines.ms17_v5_engine"),
     ]
 
+    print("DEBUG_MS: Loading Engines...")
     for key, modpath in candidates:
         try:
             mod = __import__(modpath, fromlist=["gerar"])
             if hasattr(mod, "gerar"):
                 _ENGINE_MAP[key] = mod
-        except Exception:
-            pass
+                print(f"DEBUG_MS: Loaded {key} from {modpath}")
+            else:
+                print(f"DEBUG_MS: {key} loaded but missing 'gerar'")
+        except Exception as e:
+            print(f"DEBUG_MS: Failed to load {key} ({modpath}): {e}")
+            # Em prod, se falhar, não entra no MAP
 
     return _ENGINE_MAP
 
@@ -235,30 +240,55 @@ def _modelos_disponiveis_por_plano(plano_nome: str, tipo_usuario: str):
     plano = (plano_nome or "").strip().title()
     tipo_usuario = (tipo_usuario or "").upper()
 
-    # Admin / Platinum
+    print(f"DEBUG_MS: _modelos_disponiveis_por_plano: plano='{plano}', tipo='{tipo_usuario}'")
+    engines = _load_engines_registry()
+    
+    opcoes = {}
+    
+    # 1. Definição teórica (o que deveria ter)
     if tipo_usuario == "A" or plano == "Platinum":
-        return {
+        opcoes = {
             "RANDOM_MS": {"motor": "RANDOM_MS", "descricao": "Aleatório"},
             "STAT_MS_V1": {"motor": "STAT_MS_V1", "descricao": "Estatístico v1"},
             "STAT_MS_V2": {"motor": "STAT_MS_V2", "descricao": "Estatístico v2"},
             "MS17_V5": {"motor": "MS17_V5", "descricao": "IA Neural"},
         }
-
-    if plano == "Silver":
-        return {
+    elif plano == "Silver":
+        opcoes = {
             "STAT_MS_V1": {"motor": "STAT_MS_V1", "descricao": "Estatístico v1"}
         }
-
-    if plano == "Gold":
-        return {
+    elif plano == "Gold":
+        opcoes = {
             "STAT_MS_V2": {"motor": "STAT_MS_V2", "descricao": "Estatístico v2"},
             "MS17_V5": {"motor": "MS17_V5", "descricao": "IA Neural"},
         }
+    else: # Free
+        opcoes = {
+            "RANDOM_MS": {"motor": "RANDOM_MS", "descricao": "Aleatório"}
+        }
 
-    # Free
-    return {
-        "RANDOM_MS": {"motor": "RANDOM_MS", "descricao": "Aleatório"}
-    }
+    # PROMOÇÃO DE FIM DE ANO / LANÇAMENTO (Até 01/01/2026)
+    # Libera Neural para todos os planos
+    data_limite_promo = date(2026, 1, 1)
+    if date.today() < data_limite_promo:
+        if "MS17_V5" not in opcoes:
+             opcoes["MS17_V5"] = {"motor": "MS17_V5", "descricao": "IA Neural (Promo)"}
+
+    # 2. Filtragem real (o que realmente existe/carregou)
+    # Se uma engine falhou no import, removemos da lista para não dar erro silencioso (fallback random)
+    final = {}
+    for key, val in opcoes.items():
+        if key in engines:
+            final[key] = val
+        else:
+            print(f"DEBUG_MS: Removing {key} (not in engines map - failed import?)")
+    
+    # Fallback de segurança: se sobrou vazio (ex: Gold sem TF), dá random
+    if not final:
+        print("DEBUG_MS: Lista vazia após filtro -> Fallback Random")
+        final = {"RANDOM_MS": {"motor": "RANDOM_MS", "descricao": "Aleatório (Fallback)"}}
+
+    return final
 
 def _render_dezenas_circulos(dezenas):
     st.markdown(
