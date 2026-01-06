@@ -63,6 +63,11 @@ import streamlit.components.v1 as components
 from sqlalchemy import text, create_engine
 
 from app.db import Session
+# ==========================
+# NEURAL GATING (Render-safe) -  DESATIVAÇÃO GLOBAL DO TENSORFLOW EM PRODUCAÇÃO
+# ==========================
+USE_NEURAL_MODELS = os.getenv("USE_NEURAL_MODELS", "false").strip().lower() == "true"
+
 
 # --- LS16: ensemble inteligente (tenta usar modelo_llm_max/ensemble.py)
 try:
@@ -271,7 +276,13 @@ def prepare_seq(T: int):
 
 def _score_from_ls(model_name: str):
     metas = carregar_modelo_ls(model_name)
-    print(">>> ENTROU 1 _score_from_ls")
+    print(">>> ENTROU 1 _score_from_ls - em revisao ate next v10")
+
+     # Se neural está desativado, não chama carregamento neural e já cai no estatístico sem ruído
+    if not USE_NEURAL_MODELS:
+        return np.zeros(25, dtype=float)
+
+    metas = carregar_modelo_ls(model_name)
 
     if not metas:
         return np.zeros(25, dtype=float)
@@ -1432,6 +1443,9 @@ def carregar_modelo_ls(model_name: str, models_dir=None):
     Carrega modelos LS14, LS15, LS16 ou LS17 com cache real.
     Evita recarregar .keras toda vez e deixa o pipeline 10x mais rápido.
     """
+    # Se o ambiente não permite neural, nem tenta importar TF
+    if not USE_NEURAL_MODELS:
+        return []
 
     _lazy_imports()
 
@@ -1937,6 +1951,36 @@ PLAN_RULES = {
     },
 }
 
+PLAN_BRANDING_LF = {
+    "free": {
+        "nome": "IA Essencial",
+        "tag": "Base Estatística Inteligente",
+        "desc": "Modelo de entrada que analisa padrões históricos e frequências para gerar palpites equilibrados, sem exageros e com foco em consistência.",
+        "modelo": "LS14"
+        },
+
+    "silver": {
+        "nome": "IA Estratégica",
+        "tag": "Estatística Evoluída",
+        "desc": "Amplia a leitura dos dados com correlações entre dezenas, reduzindo repetições comuns e buscando combinações mais eficientes.",
+        "modelo": "LS14++"
+        },
+    "gold": {
+        "nome": "IA Laboratório",
+        "tag": "Híbrida Avançada",
+        "desc": "Combina estatística profunda com lógica neural híbrida, permitindo maior liberdade de dezenas sem perder equilíbrio matemático.",
+        "modelo": "LS15"
+        },
+
+    "platinum": {
+        "nome": "IA Orquestrada",
+        "tag": "Ensemble Neural LS16",
+        "desc": "Múltiplos modelos trabalhando em conjunto. Quando o neural está ativo, usa ensemble híbrido; em fallback, opera em modo seguro validado.",
+        "modelo": "LS16"
+        }
+
+}
+
 # -------------------------------
 # Normalizador de nomes de modelos
 # -------------------------------
@@ -2026,6 +2070,8 @@ def _modelo_e_k_por_plano(nome_plano: str, k_escolhido: int | None):
     # 2. Canonical (unifica variações)
     plano_key = _canonical_plan_name(nome_bruto)
     print(">> plano_key (canonical):", repr(plano_key))
+
+
 
     # 3. Carrega regra da tabela PLAN_RULES
     cfg = PLAN_RULES.get(plano_key, PLAN_RULES["free"])
@@ -2552,20 +2598,21 @@ def gerar_palpite_ui_legacy():
     """
     import time
 
+
     t0 = time.time()
-    print(">>> ENTROU 2 na UI legacy")
+    print(">>> ENTROU 2 na UI legacy ajustado de palpites LF")
 
     _lazy_imports()
 
     # ----------------- 1) Verifica login -----------------
     if "usuario" not in st.session_state or not st.session_state.usuario:
-        st.error("Você precisa estar logado para gerar Bets.")
+        st.error("Você precisa estar logado para gerar palpites.")
         return
     usuario = st.session_state.usuario
     id_usuario = usuario.get("id")
     nome_plano_session = (usuario.get("nome_plano") or "").strip()  # volta a existir
 
-    st.title(" Gerar Novas Bets - Lotofácil")
+    st.title(" Gerar novo palpites - Lotofácil")
 
     # ----------------- 2) Limite de palpites -----------------
 
@@ -2575,10 +2622,21 @@ def gerar_palpite_ui_legacy():
         st.error(f"Limite diário atingido para o plano **{nome_plano_limite}**.")
         return
     else:
+        # Normaliza plano para uso interno (LEGACY UI)
+        nome_plano = st.session_state.usuario.get("plano_nome")
+        plano_key = _canonical_plan_name(nome_plano)
+
+        # 🔹 Branding do plano (UI)
+        brand = PLAN_BRANDING_LF.get(plano_key, PLAN_BRANDING_LF["free"])
+        plano_exib = f"{brand['nome']} — {brand['tag']}"
+
         st.info(
-            f"Plano ativo: **{nome_plano_limite}** · "
+            f"Plano ativo: **{plano_exib}** · "
             f"Palpites restantes hoje: **{restantes_hoje}**"
         )
+
+        st.caption(brand["desc"])
+
 
     nome_plano_raw = (nome_plano_limite or nome_plano_session or "").strip()
     plano_key = _canonical_plan_name(nome_plano_raw)
@@ -2621,19 +2679,19 @@ def gerar_palpite_ui_legacy():
         if kmin == kmax:
             k_escolhido = kmin
             st.markdown(
-                f"**Dezenas por Bet:** {kmin} "
+                f"**Dezenas por palpites:** {kmin} "
                 f"(fixo para o plano **{nome_plano_raw or nome_plano_limite}**)"
             )
         else:
             k_escolhido = st.slider(
-                "Quantidade de dezenas por Bet:",
+                "Quantidade de dezenas por palpites:",
                 min_value=kmin,
                 max_value=kmax,
                 value=kmin,
                 step=1,
                 help=(
                     f"Seu plano **{nome_plano_raw or nome_plano_limite}** "
-                    f"permite entre {kmin} e {kmax} dezenas por Bet."
+                    f"permite entre {kmin} e {kmax} dezenas por palpites."
                 ),
             )
 
@@ -2652,22 +2710,20 @@ def gerar_palpite_ui_legacy():
     # ============================================================
     # Modelo PREVIEW usando a MESMA função oficial de modelos
     # ============================================================
-    modelo_preview, k_base_preview = _modelo_e_k_por_plano(plano_key, k_escolhido)
+    modelo_preview, k_preview = _modelo_e_k_por_plano(plano_key, k_escolhido)
 
     print(
         ">>> PREVIEW modelo_preview =", modelo_preview,
-        "k_base_preview =", k_base_preview
+        "k_base_preview =", k_preview
     )
 
     # Texto de preview com modelo em verde e bold
-    st.markdown(
-        "Seu modelo neural será o: "
-        f"<b><span style='color:#009929'>"
-        f"{LABELS.get(modelo_preview, modelo_preview)}"
-        "</span></b> · "
-        f"{k_base_preview} dezenas",
-        unsafe_allow_html=True,
-    )
+    st.caption(
+            f"Motor ativo: **{brand['nome']}** · "
+            f"Modelo técnico: **{modelo_preview}** · "
+            f"{k_preview} dezenas"
+        )
+
 
     _, copy_txt = _produto_copy_modelo(modelo_preview)
     if copy_txt:

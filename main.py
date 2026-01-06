@@ -450,7 +450,7 @@ def main():
 
     elif opcao_selecionada in ["Gerar novos palpites", "Histórico", "Validar palpites gerados"]:
         if loteria_escolhida == "Mega-Sena":
-            from mega.palpites_m import gerar_palpite_ui, historico_palpites, validar_palpite
+            from app.mega.palpites_m import gerar_palpite_ui, historico_palpites, validar_palpite
         else:
             from app.palpites_legacy import gerar_palpite_ui, historico_palpites, validar_palpite
 
@@ -471,7 +471,7 @@ def main():
         from app.dashboard import mostrar_telemetria
         mostrar_telemetria()
 
-    elif opcao_selecionada == "Usuários - adm":
+    elif opcao_selecionada == "Usuários - adm ":
         from admin.usuarios import listar_usuarios
         listar_usuarios()
 
@@ -523,4 +523,4 @@ def main():
         logout()
 
 
-    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.12 </div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.13 </div>", unsafe_allow_html=True)
