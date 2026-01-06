@@ -1,3 +1,5 @@
+# layout.py ajusta o layout global da app.
+#aff. 06/12/26 v1.0
 def inject_global_css():
     import streamlit as st
     st.markdown(

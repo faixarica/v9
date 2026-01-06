@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-palpites_legacy.py (ex-palpites_v8.15.py) v9.11
+palpites_legacy.py (ex-palpites_v8.15.py) v9.13.1  
 Consolidado, compatível com Streamlit e PostgreSQL.
 
 MAIS
@@ -16,7 +16,6 @@ import os
 import sys
 import logging
 
-
 BASE_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")
 )
@@ -25,7 +24,7 @@ if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
 # ============================================================
-# 🔧 Controle do pipeline (LEGACY / NOVO)
+# 🔧 Controle do pipeline (LEGACY / NOVO)  git
 # ============================================================
 # Use no ambiente:
 #   export USE_NEW_MODEL_PIPELINE=1
@@ -45,10 +44,10 @@ MODEL_ROOT = os.path.join(ROOT_DIR, "modelo_llm_max")
 if MODEL_ROOT not in sys.path:
     sys.path.append(MODEL_ROOT)
 
-logging.info(f"🚀 Pipeline novo ativo? {USE_NEW_PIPELINE}")
-logging.info(f"📦 MODEL_ROOT = {MODEL_ROOT}")
-logging.info(f"📁 BASE_DIR  = {BASE_DIR}")
-logging.info(f"📁 ROOT_DIR  = {ROOT_DIR}")
+logging.info(f" Pipeline novo ativo? {USE_NEW_PIPELINE}")
+logging.info(f" MODEL_ROOT = {MODEL_ROOT}")
+logging.info(f" BASE_DIR  = {BASE_DIR}")
+logging.info(f" ROOT_DIR  = {ROOT_DIR}")
 
 import json
 import math

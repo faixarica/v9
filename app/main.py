@@ -1,10 +1,10 @@
-# app/main.py 28/12/20 v11
+# app/main.py 28/12/20 v11 /06/01/26 9.13.1
 # autor: FFerreira XX
 # descrição: Aplicação principal Streamlit da fAIxaBet V9
 import streamlit as st
 
 def main():
-    # ✅ daqui pra baixo, TUDO acontece dentro do main() X
+    #  daqui pra baixo, TUDO acontece dentro do main() X
     if "page" not in st.session_state:
         st.session_state.page = "welcome"
 
@@ -31,10 +31,6 @@ def main():
 
     from app.welcome import tela_welcome
     from app.layout import inject_global_css, render_loading_screen
-
-        #show_welcome_overlay(nome_exibicao)
-    # --- fim imports ---
-
 
     # -------------------------------
     # Estado global (sempre dentro do main)
@@ -76,7 +72,7 @@ def main():
 
     # -------------------------------
     # Router de reset: (?reset=1&token=...)
-    # ✅ MANTER só esse (não duplicar com outro bloco)
+    #  MANTER só esse (não duplicar com outro bloco)
     # -------------------------------
     query = st.query_params
     reset_flag = query.get("reset")
@@ -386,12 +382,7 @@ def main():
         or "Usuário"
     )
 
-
     tipo_user = (usuario_ss.get("tipo", "") or "").upper()
-
-    # ✅ Layout global pós-login
-    #   show_welcome_overlay(nome_exibicao)
-
     # ✅ Sidebar (corrige variável: era nome_usuario inexistente)
     st.sidebar.markdown(
         f"""
@@ -523,4 +514,4 @@ def main():
         logout()
 
 
-    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.11</div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.13.1</div>", unsafe_allow_html=True)
