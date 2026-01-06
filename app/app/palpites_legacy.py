@@ -3,7 +3,6 @@
 palpites_legacy.py (ex-palpites_v8.15.py) v9.11
 Consolidado, compatível com Streamlit e PostgreSQL.
 
-MAIS
 Inclui:
 - geração de palpites (estatístico, pares/ímpares, LS14, LS15, LS16)
 - novo pipeline incrementado (LS16/LS17/LS18)

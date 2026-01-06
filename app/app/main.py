@@ -1,10 +1,10 @@
 # app/main.py 28/12/20 v11
-# autor: FFerreira XX
+# autor: FFerreira
 # descrição: Aplicação principal Streamlit da fAIxaBet V9
 import streamlit as st
 
 def main():
-    # ✅ daqui pra baixo, TUDO acontece dentro do main() X
+    # ✅ daqui pra baixo, TUDO acontece dentro do main()
     if "page" not in st.session_state:
         st.session_state.page = "welcome"
 

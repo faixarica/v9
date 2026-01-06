@@ -1,0 +1,21 @@
+streamlit==1.37.0
+
+# Banco de dados
+sqlalchemy
+psycopg2-binary
+
+# Segurança / auth
+python-dotenv
+bcrypt
+passlib
+
+# Dados
+numpy
+pandas
+requests
+
+# graficos
+matplotlib
+
+# Pagamentos (se usado no app)
+stripe
