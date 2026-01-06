@@ -1,6 +1,7 @@
 # app/main.py 28/12/20 v11
 # autor: FFerreira
-# descrição: Aplicação principal Streamlit da fAIxaBet V9
+# descrição: Aplicação principal Streamlit da fAIxaBet V9.13
+
 import streamlit as st
 
 def main():
@@ -34,7 +35,6 @@ def main():
 
         #show_welcome_overlay(nome_exibicao)
     # --- fim imports ---
-
 
     # -------------------------------
     # Estado global (sempre dentro do main)
