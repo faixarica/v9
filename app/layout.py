@@ -102,7 +102,7 @@ def render_loading_screen(seconds= 12):
         <div class="fxb-loading-wrap">
             <img class="fxb-logo-build" src="{logo_src}" alt="fAIxaBet logo" />
             <div class="fxb-progress"><span></span></div>
-            <div class="fxb-loading-text">Preparando sua melho experiência com loterias…</div>
+            <div class="fxb-loading-text">Preparando sua melhor experiência com loterias…</div>
         </div>
         """,
         unsafe_allow_html=True

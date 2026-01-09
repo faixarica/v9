@@ -24,8 +24,8 @@ def main():
     from app.db import Session
     from app.dashboard import mostrar_dashboard
     from app.auth import verificar_senha, logout
-    from app.services.email_service import enviar_email_reset
-    from app.notificacoes.notifica import tela_notificacoes_acertos
+    from services.email_service import enviar_email_reset
+    from notificacoes.notifica import tela_notificacoes_acertos
     from app.perfil import editar_perfil
     from app.financeiro import exibir_aba_financeiro
 

@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from sqlalchemy import text
 
 from app.db import Session
-from app.services.email_service import enviar_email_brevo
+from services.email_service import enviar_email_brevo
 
 LOT_CONFIG = {
     "Lotofácil": {

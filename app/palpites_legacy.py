@@ -2,7 +2,6 @@
 """
 palpites_legacy.py (ex-palpites_v8.15.py) v9.13.1  
 Consolidado, compatível com Streamlit e PostgreSQL.
-
 MAIS
 Inclui:
 - geração de palpites (estatístico, pares/ímpares, LS14, LS15, LS16)
@@ -112,7 +111,7 @@ def get_conn():
     )
 
     if not db_url:
-        st.error("❌ Variável de conexão DATABASE_URL não encontrada no ambiente.")
+        st.error("❌ Variável de conexão DATABASE_URL não encontrada no ambiente atual.")
         return None
 
     try:

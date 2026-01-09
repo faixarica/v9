@@ -58,7 +58,7 @@ def editar_perfil(user_id):
         # Validações
         # -------------------------------------------------------------
         if not nova_senha or not confirmar_senha:
-            st.warning("Informe e confirme a nova senha.")
+            st.warning("Informe a nova senhae confirme.")
             return
 
         if nova_senha != confirmar_senha:

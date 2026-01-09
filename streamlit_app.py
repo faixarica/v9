@@ -20,7 +20,9 @@ MODELS_DIR = (
     os.getenv("FAIXABET_MODELS_DIR")
     or st.secrets.get("FAIXABET_MODELS_DIR")
 )
-
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+    
 if not MODELS_DIR:
     raise RuntimeError(
         "❌ FAIXABET_MODELS_DIR não definido no ambiente ou secrets."

@@ -75,7 +75,6 @@ def apply_custom_css():
         </style>
     """, unsafe_allow_html=True)
 
-
 # -------------------- [3] FUNÇÃO AUXILIAR DE DATA --------------------
 
 def _fmt_date_br(x):
@@ -116,7 +115,7 @@ def grafico_frequencia_palpites():
     # essa def esta sem utilização(ainda)!!!!
 
 def mostrar_telemetria():
-    st.markdown("## 📊 Telemetria dos Modelos (FaixaBet AI)")
+    st.markdown("##  Telemetria dos Modelos (FaixaBet AI)")
     db = Session()
 
     try:
