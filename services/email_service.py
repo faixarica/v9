@@ -82,9 +82,9 @@ def enviar_email_reset(
             <ol>
               <li>Ao clicar no botão verde acima.</li>
               <li>Você será redirecionado para a página da aplicação fAIxaBet.</li>
-              <li>A pagina  Redefinir senha será carregada. </li>
+              <li>A página  "Redefinir senha" será carregada. </li>
               <li>Informe sua nova senha.</li>
-              <li>Confirme sua nova senha e clique no salvar nova.senha.</li>
+              <li>Confirme sua nova senha e clique no salvar nova senha.</li>
             </ol>
             <p style="color:#555;">
               🔒 Se você <strong>não solicitou</strong> esta redefinição, ignore este e-mail.
