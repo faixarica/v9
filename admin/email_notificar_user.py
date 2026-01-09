@@ -4,7 +4,7 @@ from sqlalchemy import text
 from db import Session
 
 # Serviço REAL de e-mail (Brevo)
-from app.services.email_service import enviar_email_brevo
+from services.email_service import enviar_email_brevo
 
 
 # ============================================================

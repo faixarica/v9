@@ -12,7 +12,7 @@ from datetime import datetime
 from sqlalchemy import text
 from db import Session
 
-from app.services.email_service import enviar_email_brevo
+from services.email_service import enviar_email_brevo
 
 
 # ============================================================
