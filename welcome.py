@@ -11,7 +11,7 @@ def tela_welcome(seconds=2):
             <div style="font-size:52px; font-weight:900; color:#1faa59; line-height:1.05;">
                 Bem-vindo(a) à fAIxaBet®
             </div>
-            <div style="margin-top:12px; font-size:20px; font-weight:600; color:#1faa59;">
+            <div style="margin-top:12px; font-size:20px; font-weight:600; color:#2d0ac7;">
                 Onde o futuro é prever
             </div>
         </div>
