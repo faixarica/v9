@@ -114,7 +114,7 @@ def processar_notificacoes_acertos():
                 st.error(f"Erro no palpite {palpite.id}: {e}")
 
         db.commit()
-        st.success(f" {enviados} notificações enviadas com sucesso!")
+        st.success(f"✅ {enviados} notificações enviadas com sucesso!")
 
     except Exception as e:
         db.rollback()
