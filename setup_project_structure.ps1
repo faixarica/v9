@@ -72,6 +72,7 @@ Ensure-Directory "$ROOT/mega"
 # -------------------------------
 Ensure-File "$ROOT/streamlit_app.py" @"
 """
+
 FaixaBet V9 - Streamlit App
 
 Arquivo principal de entrada da aplicacao.

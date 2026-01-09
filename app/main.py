@@ -514,4 +514,4 @@ def main():
         logout()
 
 
-    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.13.1</div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.13.2</div>", unsafe_allow_html=True)

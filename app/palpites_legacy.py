@@ -16,11 +16,9 @@ import os
 import sys
 import logging
 
-BASE_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..")
-)
+BASE_DIR = os.path.abspath( os.path.join(os.path.dirname(__file__), "..") )
 
-if BASE_DIR not in sys.path:
+if BASE_DIR not in sys.path: 
     sys.path.insert(0, BASE_DIR)
 
 # ============================================================
@@ -81,8 +79,7 @@ from modelo_llm_max.utils_ls_loader import carregar_modelo_ls
 DEBUG_MODE = os.environ.get("DEBUG_MODE", "0") == "1"
 logging.basicConfig(
     level=logging.DEBUG if DEBUG_MODE else logging.INFO,
-    format="%(asctime)s %(levelname)s: %(message)s",
-)
+    format="%(asctime)s %(levelname)s: %(message)s",)
 
 def _safe_rerun():
     """Rerun compatível com versões novas e antigas do Streamlit."""
@@ -149,7 +146,6 @@ def _existing_cols(table_name: str) -> set:
 # --- caminhos / arquivos
 BASE_DIR = os.getcwd()
 # -------- Estatístico (freq + recência + correlação) --------
-import pandas as pd
 
 def _carregar_df_lotofacil():
     """
