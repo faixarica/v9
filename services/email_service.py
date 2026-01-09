@@ -1,3 +1,7 @@
+# email_service.py -  Serviço de envio de e-mails via Brevo (Sendinblue) e SMTP padrão
+# autor: afranciscf
+# data: 2025-06-10
+
 import os
 import requests
 from dotenv import load_dotenv
