@@ -5,7 +5,7 @@ from app.services.reset_manual import (
     salvar_token_reset,
     gerar_link_reset
 )
-from services.email_reset_manual import enviar_reset_manual
+from app.services.email_reset_manual import enviar_reset_manual
 
 
 def buscar_usuario(db, email: str):

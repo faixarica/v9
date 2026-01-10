@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy import text
 from db import Session
-from services.email_service import enviar_email_brevo
+from app.services.email_service import enviar_email_brevo
 
 TEMPLATE_RESUMO_MENSAL = 4  # <<< TROQUE PELO SEU ID REAL
 
