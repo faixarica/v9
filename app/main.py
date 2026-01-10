@@ -1,4 +1,4 @@
-# app/main.py 28/12/20 v11 /06/01/26 9.13.1
+    # app/main.py 28/12/20 v11 /06/01/26 9.13.1
 # autor: FFerreira XX
 # descrição: Aplicação principal Streamlit da fAIxaBet V9
 import streamlit as st
@@ -31,21 +31,12 @@ def main():
 
     from app.welcome import tela_welcome
     from app.layout import inject_global_css, render_loading_screen
+    from app.layout import render_brand_header
 
     # -------------------------------
-    # Estado global (sempre dentro do main)
+    # CSS / UI helpers (centralizado)
     # -------------------------------
-    if "logged_in" not in st.session_state:
-        st.session_state.logged_in = False
-
-    if "recover_step" not in st.session_state:
-        st.session_state.recover_step = 0  # 0=login | 1=recuperar
-
-    if "last_recover_message" not in st.session_state:
-        st.session_state.last_recover_message = None
-
-    if "last_recover_ts" not in st.session_state:
-        st.session_state.last_recover_ts = None
+    inject_global_css()
 
     # -------------------------------
     # Router de páginas
@@ -64,11 +55,20 @@ def main():
     if st.session_state.page == "app":
         pass  # deixa seguir para o fluxo logado
 
+    # -------------------------------
+    # Estado global (sempre dentro do main)
+    # -------------------------------
+    if "logged_in" not in st.session_state:
+        st.session_state.logged_in = False
 
-    # -------------------------------
-    # CSS / UI helpers (centralizado)
-    # -------------------------------
-    inject_global_css()
+    if "recover_step" not in st.session_state:
+        st.session_state.recover_step = 0  # 0=login | 1=recuperar
+
+    if "last_recover_message" not in st.session_state:
+        st.session_state.last_recover_message = None
+
+    if "last_recover_ts" not in st.session_state:
+        st.session_state.last_recover_ts = None
 
     # -------------------------------
     # Router de reset: (?reset=1&token=...)
@@ -188,7 +188,10 @@ def main():
     # -------------------------------
     if not st.session_state.logged_in:
         st.sidebar.empty()
-        st.markdown("<style>[data-testid='stSidebar']{display:none}</style>", unsafe_allow_html=True)
+        st.markdown(
+            "<style>[data-testid='stSidebar']{display:none}</style>",
+            unsafe_allow_html=True
+        )
 
         # Mensagem persistente pós-recuperação (se existir)
         if st.session_state.last_recover_message:
@@ -208,47 +211,39 @@ def main():
                 st.rerun()
 
         # PASSO 0: login
-        from pathlib import Path
-
         if st.session_state.recover_step == 0:
 
             # ===== CSS botão Conectar =====
             st.markdown("""
-                    <style>
-                    /* Apenas o botão SUBMIT dentro do FORM (Conectar) */
-                    div[data-testid="stForm"] div.stButton > button {
-                        background-color: #2ED600 !important;
-                        color: white !important;
-                        border: none !important;
-                        font-weight: 600 !important;
-                    }
+                <style>
+                /* Apenas o botão SUBMIT dentro do FORM (Conectar) */
+                div[data-testid="stForm"] div.stButton > button {
+                    background-color: #2ED600 !important;
+                    color: white !important;
+                    border: none !important;
+                    font-weight: 600 !important;
+                }
 
-                    /* Hover */
-                    div[data-testid="stForm"] div.stButton > button:hover {
-                        background-color: #28c200 !important;
-                        color: white !important;
-                    }
-                    </style>
-                    """, unsafe_allow_html=True)
+                /* Hover */
+                div[data-testid="stForm"] div.stButton > button:hover {
+                    background-color: #28c200 !important;
+                    color: white !important;
+                }
+                </style>
+            """, unsafe_allow_html=True)
 
+            # ================= LOGOMARCA LOGIN (centralizada) =================
+            from app.layout import render_brand_header
 
-            # ================= LOGOMARCA LOGIN =================
-            logo_path = Path("app/assets/logoRetangular.png")
+            render_brand_header(
+                variant="retangular",
+                align="center",
+                subtitle="o futuro é prever!"
+            )
 
-            if logo_path.exists():
-                col1, col2, col3 = st.columns([1, 1, 1])
-                with col2:
-                    st.image(
-                        str(logo_path),
-                        width=260
-                    )
-
-                # reduz espaço abaixo do logo
-                st.markdown(
-                    "<div style='margin-bottom: -10px'></div>",
-                    unsafe_allow_html=True
-                )
-            # ==================================================
+            # espaçamento controlado (leve)
+            st.markdown("<div style='font-size:14px;font-weight:700;color:#2d2d2d;'>", unsafe_allow_html=True)
+            # ================================================================
 
             st.markdown("## Login")
 
@@ -265,7 +260,6 @@ def main():
                 use_container_width=True
             )
 
-
             if submitted_recover:
                 st.session_state.recover_step = 1
                 st.rerun()
@@ -281,7 +275,7 @@ def main():
                         SELECT id, nome_completo, email, usuario, tipo, id_plano, senha
                         FROM usuarios
                         WHERE usuario = :usuario
-                          AND ativo = true
+                        AND ativo = true
                         LIMIT 1
                     """), {"usuario": usuario_input}).fetchone()
 
@@ -308,15 +302,15 @@ def main():
                     try:
                         db.execute(text("""
                             UPDATE usuarios
-                               SET tentativas_falha = 0,
-                                   dt_ultima_tentativa = NULL
-                             WHERE id = :uid
+                            SET tentativas_falha = 0,
+                                dt_ultima_tentativa = NULL
+                            WHERE id = :uid
                         """), {"uid": user_id})
                         db.commit()
                     except Exception:
                         pass
 
-                    # ✅ session_state completo (inclui usuario/login para fallback)
+                    # ✅ session_state completo
                     st.session_state.logged_in = True
                     st.session_state.usuario = {
                         "id": user_id,
@@ -327,10 +321,10 @@ def main():
                         "id_plano": id_plano
                     }
 
-                    # ✅ NÃO renderiza logo/overlay aqui (evita duplicação)
+                    # evita duplicação de logo / overlays
                     st.session_state.page = "app"
-
                     st.rerun()
+
                 finally:
                     db.close()
 
@@ -340,7 +334,10 @@ def main():
 
             with st.form("recover_form"):
                 email = st.text_input("Informe seu e-mail cadastrado")
-                submitted_recover_email = st.form_submit_button("📩 Enviar link", use_container_width=True)
+                submitted_recover_email = st.form_submit_button(
+                    "📩 Enviar link",
+                    use_container_width=True
+                )
 
             if submitted_recover_email:
                 db = Session()
@@ -349,11 +346,13 @@ def main():
                         SELECT id, email
                         FROM usuarios
                         WHERE email = :email
-                          AND ativo = true
+                        AND ativo = true
                         LIMIT 1
                     """), {"email": email}).fetchone()
 
-                    st.session_state.last_recover_message = "📬 Se esse e-mail existir, enviaremos um link de recuperação."
+                    st.session_state.last_recover_message = (
+                        "📬 Se esse e-mail existir, enviaremos um link de recuperação."
+                    )
                     st.session_state.last_recover_ts = time.time()
                     st.session_state.recover_step = 0
 
@@ -361,7 +360,9 @@ def main():
                         user_id, user_email = row
                         tok = gerar_token_recuperacao(user_id, db)
                         if tok:
-                            base_url = os.getenv("APP_BASE_URL", "http://localhost:8501")
+                            base_url = os.getenv(
+                                "APP_BASE_URL", "http://localhost:8501"
+                            )
                             link = f"{base_url}/?reset=1&token={tok}"
                             enviar_email_reset(user_email, link)
 
@@ -370,6 +371,7 @@ def main():
                     db.close()
 
         return  # importante: não deixa continuar para menu logado
+
 
     # -------------------------------
     # Fluxo LOGADO (menu)
@@ -411,13 +413,13 @@ def main():
     if tipo_user in ["A", "ADM", "ADMIN"]:
         menu_itens = [
             "Painel Estatístico",
-            "Gerar Novas Bets",
+            "Gerar novos palpites",
             "Histórico",
-            "Validar Bets Gerada",
+            "Validar papites gerados",
             "Assinatura ",
             "Editar Perfil",
             "Telemetria",
-            "Usuários",
+            "Usuários - adm",
             "Notificar",
             "Resultados",
             "Evolução",
@@ -426,9 +428,9 @@ def main():
     else:
         menu_itens = [
             "Painel Estatístico",
-            "Gerar Novas Bets",
+            "Gerar novos palpites",
             "Histórico",
-            "Validar Bets Gerada",
+            "Validar papites gerados",
             "Assinatura ",
             "Editar Perfil",
             "Sair",
@@ -439,13 +441,13 @@ def main():
     if opcao_selecionada == "Painel Estatístico":
         mostrar_dashboard()
 
-    elif opcao_selecionada in ["Gerar Novas Bets", "Histórico", "Validar Bets Gerada"]:
+    elif opcao_selecionada in ["Gerar novos palpites", "Histórico", "Validar papites gerados"]:
         if loteria_escolhida == "Mega-Sena":
             from mega.palpites_m import gerar_palpite_ui, historico_palpites, validar_palpite
         else:
             from app.palpites_legacy import gerar_palpite_ui, historico_palpites, validar_palpite
 
-        if opcao_selecionada == "Gerar Novas Bets":
+        if opcao_selecionada == "Gerar novos palpites":
             gerar_palpite_ui()
         elif opcao_selecionada == "Histórico":
             historico_palpites()
@@ -462,7 +464,7 @@ def main():
         from app.dashboard import mostrar_telemetria
         mostrar_telemetria()
 
-    elif opcao_selecionada == "Usuários":
+    elif opcao_selecionada == "Usuários - adm":
         from admin.usuarios import listar_usuarios
         listar_usuarios()
 
@@ -488,14 +490,14 @@ def main():
         with col2:
             st.markdown("""
                 <div style="
-                    padding: 30px;
+                    padding:10px;
                     border-radius: 16px;
                     background-color: #f0f2f6;
                     text-align: center;
                     box-shadow: 0 8px 20px rgba(0,0,0,0.15);
                 ">
                     <h2 style="margin-bottom: 10px;">🙏 Obrigado por usar a <span style="color:#2ED600;">fAIxaBet</span></h2>
-                    <p style="font-size: 16px; margin-bottom: 20px;">
+                    <p style="font-size: 18px; margin-bottom: 20px;">
                         Esperamos te ver novamente em breve.<br>
                         O futuro é prever, Pense nisso!
                     </p>
@@ -514,4 +516,4 @@ def main():
         logout()
 
 
-    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.13.2</div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.13.5/div>", unsafe_allow_html=True)
