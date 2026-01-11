@@ -1,4 +1,5 @@
 # usuarios.py - administração de usuários (visão ADM)
+#update qtd usuarios
 
 import streamlit as st
 from sqlalchemy import text
