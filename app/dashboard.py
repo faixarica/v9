@@ -947,3 +947,199 @@ def mostrar_dashboard():
     # (Opcional) Ganhadores por faixa só Lotofácil — se você quiser reativar depois,
     # faça um SELECT que traga os campos ganhadores/rateio.
 
+    # -------------------------------
+    # 🔹 Premiação do concurso (ganhadores + rateio) — AUTO-DETECT (LF e MS)
+    # -------------------------------
+
+    import re
+
+    def _fmt_brl(v):
+        try:
+            if v is None:
+                return "—"
+            x = float(v)
+            s = f"{x:,.2f}"
+            s = s.replace(",", "X").replace(".", ",").replace("X", ".")
+            return f"R$ {s}"
+        except Exception:
+            return str(v)
+
+    def _detect_premiacao_cols(db, table_name: str, faixas: list[int]):
+        """
+        Detecta automaticamente colunas de ganhadores e rateio (valor) na tabela.
+        Retorna dict: {faixa_int: {"ganh": "col", "rateio": "col"}}
+        """
+        cols = db.execute(text("""
+            SELECT column_name
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = :t
+        """), {"t": table_name}).fetchall()
+
+        colnames = [c[0] for c in cols]
+
+        # Heurísticas de nome (bem tolerantes)
+        # - ganhadores: ganh, ganhadores, qtd_ganhadores, n_ganhadores, vencedores, etc.
+        # - rateio/valor: rateio, valor, premio, premiacao, payout, etc.
+        ganh_re = re.compile(r"(ganh|ganhadores|qtd_?ganh|n_?ganh|vencedor|vencedores)", re.I)
+        rate_re = re.compile(r"(rateio|valor|premio|premiacao|payout)", re.I)
+
+        # Extrai número da faixa no final (11, 12, 13...) com ou sem underscore
+        # Ex: ganhadores11, ganhadores_11, rateio14, rateio_14
+        def faixa_from_col(col: str):
+            m = re.search(r"(?:_|)(\d{1,2})$", col)
+            return int(m.group(1)) if m else None
+
+        # Indexa por faixa
+        by_faixa = {f: {"ganh": None, "rateio": None} for f in faixas}
+
+        for col in colnames:
+            fx = faixa_from_col(col)
+            if fx not in by_faixa:
+                continue
+
+            if ganh_re.search(col):
+                by_faixa[fx]["ganh"] = by_faixa[fx]["ganh"] or col
+
+            if rate_re.search(col):
+                by_faixa[fx]["rateio"] = by_faixa[fx]["rateio"] or col
+
+        # Mantém apenas faixas completas (as 2 colunas)
+        ok = {}
+        for f in faixas:
+            g = by_faixa[f]["ganh"]
+            r = by_faixa[f]["rateio"]
+            if g and r:
+                ok[f] = {"ganh": g, "rateio": r}
+
+        return ok
+
+    st.markdown("### 🏅 Premiação do concurso (ganhadores e rateio)")
+
+    db = Session()
+    try:
+        premiacao_rows = []
+
+        if loteria_ativa == "lotofacil":
+            faixas = [11, 12, 13, 14, 15]
+        else:
+            faixas = [4, 5, 6]
+
+        # 1) Detecta colunas reais na tabela
+        cols_map = _detect_premiacao_cols(db, TBL_RES, faixas)
+
+        # 2) Se achou colunas, monta SELECT dinâmico com nomes reais
+        if cols_map:
+            select_parts = []
+            for f in faixas:
+                if f in cols_map:
+                    gcol = cols_map[f]["ganh"]
+                    rcol = cols_map[f]["rateio"]
+                    # aspas duplas para colunas com underscore/maiusc/minusc
+                    select_parts.append(f'"{gcol}" AS ganh_{f}')
+                    select_parts.append(f'"{rcol}" AS rateio_{f}')
+
+            sqlp = f"""
+                SELECT {", ".join(select_parts)}
+                FROM {TBL_RES}
+                WHERE concurso = :c
+                LIMIT 1
+            """
+
+            rowp = db.execute(text(sqlp), {"c": concurso_num}).fetchone()
+            if rowp:
+                rowd = dict(rowp._mapping)
+
+                for f in faixas:
+                    g = rowd.get(f"ganh_{f}")
+                    r = rowd.get(f"rateio_{f}")
+                    if g is None and r is None:
+                        continue
+                    premiacao_rows.append({
+                        "Faixa": f"{f} acertos",
+                        "Ganhadores": int(g) if g is not None else 0,
+                        "Rateio": _fmt_brl(r),
+                    })
+
+        # 3) Fallback (Mega) via premiacao_json, se existir (não quebra)
+        if (not premiacao_rows) and (loteria_ativa == "megasena"):
+            try:
+                rowj = db.execute(text(f"""
+                    SELECT premiacao_json
+                    FROM {TBL_RES}
+                    WHERE concurso = :c
+                    LIMIT 1
+                """), {"c": concurso_num}).fetchone()
+
+                if rowj and rowj[0]:
+                    pj = rowj[0]
+                    if isinstance(pj, str):
+                        import json
+                        pj = json.loads(pj)
+
+                    # tenta formatos comuns
+                    if isinstance(pj, dict):
+                        # CASO 1: Estrutura aninhada "premiacoes": [...]
+                        if "premiacoes" in pj and isinstance(pj["premiacoes"], list):
+                            for it in pj["premiacoes"]:
+                                fx = str(it.get("faixa") or it.get("descricao") or it.get("nome") or "").strip()
+                                ganh = it.get("ganhadores")
+                                val = it.get("valor") or it.get("rateio")
+                                if fx:
+                                    premiacao_rows.append({
+                                        "Faixa": fx,
+                                        "Ganhadores": int(ganh) if ganh is not None else 0,
+                                        "Rateio": _fmt_brl(val),
+                                    })
+                        
+                        # CASO 2: Chaves diretas (flat) ex: "ganhadores_4", "rateio_4"
+                        else:
+                            # Tenta faixas numéricas de 4 a 6 (Mega) ou generaliza
+                            found_flat = False
+                            for f_num in [6, 5, 4]:
+                                g_key = f"ganhadores_{f_num}"
+                                r_key = f"rateio_{f_num}"
+                                
+                                # Se alguma chave existir
+                                if (g_key in pj) or (r_key in pj):
+                                    found_flat = True
+                                    g_val = pj.get(g_key)
+                                    r_val = pj.get(r_key)
+                                    
+                                    # Monta nome da faixa
+                                    nome_faixa = {6: "Sena", 5: "Quina", 4: "Quadra"}.get(f_num, f"{f_num} acertos")
+                                    
+                                    premiacao_rows.append({
+                                        "Faixa": nome_faixa,
+                                        "Ganhadores": int(g_val) if g_val else 0,
+                                        "Rateio": _fmt_brl(r_val),
+                                    })
+                            
+                            # Se não achou 4/5/6, tenta iterar chaves genéricas se necessário
+                            pass
+            except Exception:
+                pass
+
+    finally:
+        db.close()
+
+    if premiacao_rows:
+        df_prem = pd.DataFrame(premiacao_rows)
+
+        st.markdown(f"""
+            <div class="card" style="border-left-color:#22c55e;">
+                <div class="metric-title">📌 Ganhadores e Rateio — {loteria_label}</div>
+                <div style="font-size:13px; color:#444;">
+                    Quantidade de ganhadores por faixa e valores de rateio em <b>R$</b>.
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.dataframe(df_prem, width="stretch", hide_index=True)
+    else:
+        st.info("Premiação (ganhadores/rateio) não encontrada — verifique os nomes das colunas na tabela.")
+
+if __name__ == "__main__":
+    import streamlit as st
+    st.warning("Este arquivo é um módulo da aplicação. Execute o streamlit_app.py (arquivo principal).")
+    st.stop()

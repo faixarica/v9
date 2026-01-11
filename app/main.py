@@ -1,4 +1,4 @@
-    # app/main.py 28/12/20 v11 /06/01/26 9.13.1
+        # app/main.py 28/12/20 v11 /06/01/26 9.13.1
 # autor: FFerreira XX
 # descrição: Aplicação principal Streamlit da fAIxaBet V9
 import streamlit as st
@@ -376,6 +376,23 @@ def main():
     # -------------------------------
     # Fluxo LOGADO (menu)
     # -------------------------------
+    # Força a sidebar a aparecer (caso tenha ficado oculta no login)
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebar"] {
+            display: flex !important;
+            visibility: visible !important;
+        }
+        /* Garante que o botão de abrir/fechar sidebar esteja visível também (caso o header seja oculto) */
+        [data-testid="stSidebarNav"] {
+            display: block !important;
+            visibility: visible !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
     usuario_ss = st.session_state.get("usuario", {})
 
     nome_exibicao = (
@@ -436,7 +453,7 @@ def main():
             "Sair",
         ]
 
-    opcao_selecionada = st.sidebar.radio(" ", menu_itens)
+    opcao_selecionada = st.sidebar.radio(" ", menu_itens, key="menu_principal")
 
     if opcao_selecionada == "Painel Estatístico":
         mostrar_dashboard()
@@ -516,4 +533,4 @@ def main():
         logout()
 
 
-    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.13.5/div>", unsafe_allow_html=True)
+    st.sidebar.markdown("<div style='text-align:left; color:green; font-size:16px;'>fAIxaBet v9.13.56 </div>", unsafe_allow_html=True)

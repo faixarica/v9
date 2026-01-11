@@ -30,10 +30,12 @@ def inject_global_css():
         }
 
         /* remove header invisível do Streamlit */
+        /*
         header {
             visibility: hidden;
             height: 0px;
         }
+        */
 
         .stSpinner {
             display: none !important;

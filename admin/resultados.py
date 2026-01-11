@@ -1,9 +1,15 @@
 # resultados.py - importa todos os ultimos sorteios pra a tabela resultados_oficiais.
 # db.py
 import os
+import csv
+import time
 from dotenv import load_dotenv
-from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
+
+
 
 # 🔹 Caminho absoluto do projeto V9
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

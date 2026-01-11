@@ -2,6 +2,7 @@
 import os
 import sys
 import streamlit as st
+st.sidebar.markdown("✅ Sidebar carregada (debug)")
 
 # ================= CONFIG STREAMLIT =================
 st.set_page_config(

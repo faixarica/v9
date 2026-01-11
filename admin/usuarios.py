@@ -140,6 +140,51 @@ def _buscar_faixas_no_hits(db, hits_table: str, user_id: int, mes: int, ano: int
 def listar_usuarios():
     st.markdown("## 🐵 Administração de Usuários")
 
+    # [INÍCIO] Dashboard de métricas de usuários
+    try:
+        with Session() as db:
+            # 1. Total Geral
+            total_users = db.execute(text("SELECT COUNT(*) FROM usuarios")).scalar() or 0
+            
+            # 2. Por Plano (agrupado)
+            #    Assume planos: Free (default), Silver, Gold, Platinum
+            #    COALESCE(p.nome, 'Free') garante que quem não tem plano caia no Free
+            rows = db.execute(text("""
+                SELECT 
+                    COALESCE(p.nome, 'Free') as nome_plano,
+                    COUNT(*) as qtd
+                FROM usuarios u
+                LEFT JOIN planos p ON p.id = u.id_plano
+                GROUP BY 1
+            """)).fetchall()
+            
+            # Normaliza para garantir que todos apareçam (mesmo zerados)
+            stats = {"Free": 0, "Silver": 0, "Gold": 0, "Platinum": 0}
+            for nome, qtd in rows:
+                # normaliza nome (ex: "Silver " -> "Silver")
+                clean_name = str(nome).strip()
+                # Se for algum plano exótico, adiciona também final
+                if clean_name not in stats:
+                    stats[clean_name] = 0
+                stats[clean_name] += qtd
+            
+            # Exibição
+            c_tot, c_free, c_silver, c_gold, c_plat = st.columns(5)
+            
+            c_tot.metric("👥 Total Usuários", total_users)
+            c_free.metric("🆓 Free", stats.get("Free", 0))
+            c_silver.metric("🥈 Silver", stats.get("Silver", 0))
+            c_gold.metric("🥇 Gold", stats.get("Gold", 0))
+            c_plat.metric("💎 Platinum", stats.get("Platinum", 0))
+            
+            st.divider()
+
+    except Exception as e:
+        logger.error(f"Erro ao carregar estatísticas de usuários: {e}")
+        st.error("Não foi possível carregar os totais de usuários.")
+
+    # [FIM] Dashboard de métricas
+
     with st.expander("🔍 Filtros", expanded=True):
         c1, c2 = st.columns(2)
         filtro_usuario = c1.text_input("Usuário")
