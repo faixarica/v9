@@ -1,104 +1,138 @@
-# ==========================================
-# Git Sync Safe v2 - FaixaBet
-# ==========================================
+# ============================================================
+# git_sync_safe.ps1
+# Pipeline seguro de sincronização Git (Dev → Prod)
+# Autor: FaixaBet
+# ============================================================
 
-Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$ROOT = Get-Location
-$LOG_FILE = "$ROOT\git_sync_log.csv"
-$DATE = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-
-# Pastas FULL (commit tudo)
-$FULL_DIRS = @(
-    "app",
-    "mega",
-    "models",
-    "assets"
-)
-
-# Pastas SELETIVAS (escolher arquivos)
-$SELECTIVE_DIRS = @(
-    ".",
-    "admin"
-)
-
-# Criar log
-if (!(Test-Path $LOG_FILE)) {
-    "data_hora,arquivo,status,mensagem" | Out-File $LOG_FILE -Encoding UTF8
-}
-
-Write-Host ""
 Write-Host "Analisando alteracoes do projeto..." -ForegroundColor Cyan
 
+# ------------------------------------------------------------
+# CONFIGURAÇÕES
+# ------------------------------------------------------------
+$ROOT = Get-Location
+$LOG_DIR = Join-Path $ROOT "logs"
+$LOG_FILE = Join-Path $LOG_DIR "git_sync_log.csv"
+
+$IGNORED_PATHS = @(
+    "models",
+    "models/",
+    "modelo_llm_max",
+    ".env",
+    "logs/"
+)
+
+# ------------------------------------------------------------
+# GARANTE DIRETÓRIO DE LOG
+# ------------------------------------------------------------
+if (!(Test-Path $LOG_DIR)) {
+    New-Item -ItemType Directory -Path $LOG_DIR | Out-Null
+}
+
+# ------------------------------------------------------------
+# FUNÇÃO DE LOG CSV
+# ------------------------------------------------------------
+function Write-Log {
+    param (
+        [string]$Arquivo,
+        [string]$Status,
+        [string]$Mensagem
+    )
+
+    $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+    $line = "$timestamp;$Arquivo;$Status;$Mensagem"
+
+    if (!(Test-Path $LOG_FILE)) {
+        "data_hora;arquivo;status;mensagem" | Out-File -FilePath $LOG_FILE -Encoding UTF8
+    }
+
+    $line | Out-File -FilePath $LOG_FILE -Append -Encoding UTF8
+}
+
+# ------------------------------------------------------------
+# INICIALIZAÇÃO DEFENSIVA
+# ------------------------------------------------------------
 $FILES_TO_ADD = @()
 
-# -------------------------------
-# 1) Pastas FULL SNAPSHOT
-# -------------------------------
-foreach ($dir in $FULL_DIRS) {
-    if (Test-Path $dir) {
-        Write-Host "Snapshot completo: $dir" -ForegroundColor Yellow
-        git add "$dir/"
-        "$DATE,$dir,SUCESSO,snapshot completo" | Add-Content $LOG_FILE
-    }
+# ------------------------------------------------------------
+# COLETA ALTERAÇÕES DO GIT
+# ------------------------------------------------------------
+$gitStatus = git status --porcelain
+
+if (-not $gitStatus) {
+    Write-Host "Nenhuma alteracao detectada." -ForegroundColor Yellow
+    exit 0
 }
 
-# -------------------------------
-# 2) Pastas SELETIVAS
-# -------------------------------
-foreach ($dir in $SELECTIVE_DIRS) {
+$FILES_TO_ADD = @(
+    $gitStatus | ForEach-Object {
+        $_.Substring(3).Trim()
+    }
+)
 
-    git status --porcelain $dir | ForEach-Object {
-
-        if ($_ -and $_.Length -gt 3) {
-            $file = $_.Substring(3).Trim()
-            if ($file) {
-                $FILES_TO_ADD += $file
-            }
+# ------------------------------------------------------------
+# FILTRA CAMINHOS IGNORADOS
+# ------------------------------------------------------------
+$FILES_TO_ADD = @(
+    $FILES_TO_ADD | Where-Object {
+        $keep = $true
+        foreach ($ig in $IGNORED_PATHS) {
+            if ($_ -like "$ig*") { $keep = $false }
         }
+        $keep
+    }
+)
+
+# ------------------------------------------------------------
+# VALIDA SE RESTOU ALGO
+# ------------------------------------------------------------
+if ($FILES_TO_ADD.Length -eq 0) {
+    Write-Host "Apenas arquivos ignorados foram modificados. Nada a commitar." -ForegroundColor Yellow
+    exit 0
+}
+
+# ------------------------------------------------------------
+# EXIBE RESUMO
+# ------------------------------------------------------------
+Write-Host "Arquivos que serao versionados:" -ForegroundColor Green
+$FILES_TO_ADD | ForEach-Object { Write-Host "  + $_" }
+
+# ------------------------------------------------------------
+# ADD SEGURO
+# ------------------------------------------------------------
+foreach ($file in $FILES_TO_ADD) {
+    try {
+        git add -- "$file"
+        Write-Log $file "ADD_OK" "Arquivo adicionado com sucesso"
+    } catch {
+        Write-Log $file "ADD_ERRO" $_.Exception.Message
+        throw
     }
 }
 
-$FILES_TO_ADD = $FILES_TO_ADD | Sort-Object | Get-Unique
+# ------------------------------------------------------------
+# COMMIT
+# ------------------------------------------------------------
+$commitMsg = "sync: atualizacao segura $(Get-Date -Format 'yyyy-MM-dd HH:mm')"
 
-if ($FILES_TO_ADD.Count -gt 0) {
-
-    Write-Host ""
-    Write-Host "Arquivos SELETIVOS detectados:" -ForegroundColor Yellow
-    $FILES_TO_ADD | ForEach-Object {
-        Write-Host " - $_"
-    }
-
-    $confirm = Read-Host "Adicionar esses arquivos seletivos? Digite YES"
-
-    if ($confirm -ne "YES") {
-        Write-Host "Abortado pelo usuario." -ForegroundColor Red
-        exit
-    }
-
-    foreach ($file in $FILES_TO_ADD) {
-        git add $file
-        "$DATE,$file,SUCESSO,arquivo seletivo adicionado" | Add-Content $LOG_FILE
-    }
+try {
+    git commit -m "$commitMsg" | Out-Null
+    Write-Host "Commit realizado com sucesso." -ForegroundColor Green
+} catch {
+    Write-Host "Erro ao realizar commit." -ForegroundColor Red
+    throw
 }
 
-# -------------------------------
-# 3) Commit
-# -------------------------------
-$msg = Read-Host "Mensagem do commit (obrigatoria)"
-if ([string]::IsNullOrWhiteSpace($msg)) {
-    Write-Host "Mensagem vazia. Abortando." -ForegroundColor Red
-    exit
+# ------------------------------------------------------------
+# PUSH
+# ------------------------------------------------------------
+try {
+    git push
+    Write-Host "Push concluido com sucesso." -ForegroundColor Green
+} catch {
+    Write-Host "ERRO no push. Commit mantido localmente." -ForegroundColor Red
+    throw
 }
 
-git commit -m "$msg"
-
-# -------------------------------
-# 4) Pull + Push
-# -------------------------------
-git pull --rebase
-git push
-
-Write-Host ""
-Write-Host "Git sincronizado com sucesso." -ForegroundColor Green
+Write-Host "Pipeline Git finalizado com sucesso." -ForegroundColor Cyan
