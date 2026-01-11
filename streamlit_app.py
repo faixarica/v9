@@ -2,13 +2,14 @@
 import os
 import sys
 import streamlit as st
-st.sidebar.markdown("✅ Sidebar carregada (debug)")
-
 # ================= CONFIG STREAMLIT =================
 st.set_page_config(
     page_title="FaixaBet",
     layout="wide"
 )
+
+# Debug (agora após config)
+# st.sidebar.markdown("✅ Sidebar carregada (debug)")
 
 # ================= PATHS =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

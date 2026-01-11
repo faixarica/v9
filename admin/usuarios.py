@@ -64,74 +64,82 @@ def _render_faixas(title: str, faixas_dict: dict, total_ref: int):
     st.dataframe(linhas, use_container_width=True, hide_index=True)
 
 
-def _buscar_faixas_no_hits(db, hits_table: str, user_id: int, mes: int, ano: int):
+def _calcular_estatisticas_reais(db, user_id: int, mes: int, ano: int):
     """
-    Busca faixas de acerto REAL a partir de uma tabela de validação/hits.
-    ESTE método supõe que a tabela tenha colunas:
-      - id_usuario
-      - loteria (ou tipo_loteria)
-      - data (ou dt_validacao)
-      - acertos (int)
-    Como seu schema pode variar, ele tenta múltiplos nomes de coluna.
+    Calcula estatísticas REAIS via queries diretas em palpites/resultados.
+    Substitui a dependência de 'palpites_hits' que estava vazia.
     """
-    # tenta achar colunas possíveis
-    cols = db.execute(text("""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_schema='public' AND table_name = :t
-    """), {"t": hits_table}).fetchall()
-    colset = {c.column_name for c in cols}
+    stats = {
+        "lf": {str(x): 0 for x in [11, 12, 13, 14, 15]},
+        "ms": {str(x): 0 for x in [4, 5, 6]},
+        "total_validacoes_lf": 0,
+        "total_validacoes_ms": 0,
+    }
 
-    # possíveis nomes (auto)
-    col_user = "id_usuario" if "id_usuario" in colset else ("user_id" if "user_id" in colset else None)
-    col_acertos = "acertos" if "acertos" in colset else ("hits" if "hits" in colset else None)
-    col_loteria = "loteria" if "loteria" in colset else ("tipo_loteria" if "tipo_loteria" in colset else None)
-    col_data = "data" if "data" in colset else ("dt_validacao" if "dt_validacao" in colset else ("created_at" if "created_at" in colset else None))
+    try:
+        # --- LOTOFÁCIL ---
+        # Cruza palpites com resultados pela data (normalizada)
+        q_lf = text("""
+            WITH base AS (
+                SELECT
+                    p.id,
+                    (SELECT COUNT(*) 
+                     FROM unnest(regexp_split_to_array(NULLIF(trim(COALESCE(p.dezenas, p.numeros)),''),'[,\\s]+')) d(txt)
+                     WHERE d.txt ~ '^\\d+$' 
+                       AND d.txt::int IN (r.n1,r.n2,r.n3,r.n4,r.n5,r.n6,r.n7,r.n8,r.n9,r.n10,r.n11,r.n12,r.n13,r.n14,r.n15)
+                    ) as acertos
+                FROM palpites p
+                JOIN resultados_oficiais r ON r.data = p.data_norm
+                WHERE p.id_usuario = :uid
+                  AND EXTRACT(MONTH FROM CAST(p.created_at AS DATE)) = :m
+                  AND EXTRACT(YEAR FROM CAST(p.created_at AS DATE)) = :a
+            )
+            SELECT acertos, COUNT(*) as qtd
+            FROM base
+            GROUP BY acertos
+        """)
+        
+        rows_lf = db.execute(q_lf, {"uid": user_id, "m": mes, "a": ano}).fetchall()
+        for r in rows_lf:
+            acertos = r.acertos
+            qtd = r.qtd
+            stats["total_validacoes_lf"] += qtd
+            if acertos in [11, 12, 13, 14, 15]:
+                 stats["lf"][str(acertos)] += qtd
 
-    if not all([col_user, col_acertos, col_loteria, col_data]):
-        return None, f"Tabela '{hits_table}' existe, mas não tem colunas esperadas (usuário/acertos/loteria/data)."
+        # --- MEGA-SENA ---
+        q_ms = text("""
+            WITH base AS (
+                SELECT
+                    p.id,
+                    (SELECT COUNT(*) 
+                     FROM unnest(regexp_split_to_array(NULLIF(trim(p.numeros),''),'[,\\s]+')) d(txt)
+                     WHERE d.txt ~ '^\\d+$' 
+                       AND d.txt::int IN (r.n1,r.n2,r.n3,r.n4,r.n5,r.n6)
+                    ) as acertos
+                FROM palpites_m p
+                JOIN resultados_oficiais_m r ON r.data = p.data_norm
+                WHERE p.id_usuario = :uid
+                  AND EXTRACT(MONTH FROM CAST(p.created_at AS DATE)) = :m
+                  AND EXTRACT(YEAR FROM CAST(p.created_at AS DATE)) = :a
+            )
+            SELECT acertos, COUNT(*) as qtd
+            FROM base
+            GROUP BY acertos
+        """)
+        
+        rows_ms = db.execute(q_ms, {"uid": user_id, "m": mes, "a": ano}).fetchall()
+        for r in rows_ms:
+            acertos = r.acertos
+            qtd = r.qtd
+            stats["total_validacoes_ms"] += qtd
+            if acertos in [4, 5, 6]:
+                 stats["ms"][str(acertos)] += qtd
 
-    # busca contagens por faixa e loteria
-    rows = db.execute(text(f"""
-        SELECT
-            {col_loteria} AS loteria,
-            {col_acertos} AS acertos,
-            COUNT(*) AS qtd
-        FROM {hits_table}
-        WHERE {col_user} = :u
-          AND EXTRACT(MONTH FROM {col_data}) = :m
-          AND EXTRACT(YEAR FROM {col_data}) = :a
-        GROUP BY {col_loteria}, {col_acertos}
-        ORDER BY {col_loteria}, {col_acertos}
-    """), {"u": user_id, "m": mes, "a": ano}).fetchall()
+        return stats, None
 
-    # normaliza
-    lf = {str(x): 0 for x in [11, 12, 13, 14, 15]}
-    ms = {str(x): 0 for x in [4, 5, 6]}
-    total_validacoes_lf = 0
-    total_validacoes_ms = 0
-
-    for r in rows:
-        lot = (str(r.loteria or "")).lower()
-        a = int(r.acertos)
-        q = int(r.qtd)
-
-        # heurística de loteria
-        if "loto" in lot or "lf" in lot:
-            total_validacoes_lf += q
-            if a in [11, 12, 13, 14, 15]:
-                lf[str(a)] += q
-        elif "mega" in lot or "ms" in lot:
-            total_validacoes_ms += q
-            if a in [4, 5, 6]:
-                ms[str(a)] += q
-
-    return {
-        "lf": lf,
-        "ms": ms,
-        "total_validacoes_lf": total_validacoes_lf,
-        "total_validacoes_ms": total_validacoes_ms,
-    }, None
+    except Exception as e:
+        return None, f"Erro ao calcular estatísticas: {e}"
 
 
 # =========================================================
@@ -293,46 +301,42 @@ def listar_usuarios():
                     if st.session_state[open_key]:
                         with st.expander(f"📊 Estatísticas — {u.usuario} ({mes:02d}/{ano})", expanded=True):
                             with Session() as db:
-                                hits_table = _pick_hits_table(db)
+                                # Chama cálculo em tempo real
+                                stats, err = _calcular_estatisticas_reais(db, u.id, mes, ano)
 
-                                if not hits_table:
-                                    st.error("Não encontrei nenhuma tabela de validação/hits no banco para calcular acertos reais.")
-                                    st.info("Candidatas: palpites_hits / palpites_validacoes / estatisticas_cache")
+                                if err:
+                                    st.error(err)
                                 else:
-                                    stats, err = _buscar_faixas_no_hits(db, hits_table, u.id, mes, ano)
-                                    if err:
-                                        st.error(err)
-                                    else:
-                                        st.caption(f"Fonte: {hits_table}")
+                                    st.caption("Cálculo em tempo real (baseado em resultados importados)")
 
-                                        # totais e percentuais reais (baseados no total de validações do mês)
-                                        colA, colB = st.columns(2)
-                                        with colA:
-                                            total_lf = stats["total_validacoes_lf"]
-                                            total_faixa_lf = sum(stats["lf"].values())
-                                            pct_lf = (total_faixa_lf / total_lf * 100) if total_lf else 0
-                                            st.metric("LF validados no mês", total_lf)
-                                            st.metric("LF com 11–15", total_faixa_lf)
-                                            st.metric("LF % (11–15)", f"{pct_lf:.2f}%")
+                                    # totais e percentuais
+                                    colA, colB = st.columns(2)
+                                    with colA:
+                                        total_lf = stats["total_validacoes_lf"]
+                                        total_faixa_lf = sum(stats["lf"].values())
+                                        pct_lf = (total_faixa_lf / total_lf * 100) if total_lf else 0
+                                        st.metric("LF validados no mês", total_lf)
+                                        st.metric("LF com 11–15", total_faixa_lf)
+                                        st.metric("LF % (11–15)", f"{pct_lf:.2f}%")
 
-                                        with colB:
-                                            total_ms = stats["total_validacoes_ms"]
-                                            total_faixa_ms = sum(stats["ms"].values())
-                                            pct_ms = (total_faixa_ms / total_ms * 100) if total_ms else 0
-                                            st.metric("MS validados no mês", total_ms)
-                                            st.metric("MS com 4–6", total_faixa_ms)
-                                            st.metric("MS % (4–6)", f"{pct_ms:.2f}%")
+                                    with colB:
+                                        total_ms = stats["total_validacoes_ms"]
+                                        total_faixa_ms = sum(stats["ms"].values())
+                                        pct_ms = (total_faixa_ms / total_ms * 100) if total_ms else 0
+                                        st.metric("MS validados no mês", total_ms)
+                                        st.metric("MS com 4–6", total_faixa_ms)
+                                        st.metric("MS % (4–6)", f"{pct_ms:.2f}%")
 
-                                        st.divider()
-                                        _render_faixas("🎯 Lotofácil — faixas 11–15", stats["lf"], stats["total_validacoes_lf"])
-                                        _render_faixas("🎯 Mega-Sena — faixas 4–6", stats["ms"], stats["total_validacoes_ms"])
+                                    st.divider()
+                                    _render_faixas("🎯 Lotofácil — faixas 11–15", stats["lf"], stats["total_validacoes_lf"])
+                                    _render_faixas("🎯 Mega-Sena — faixas 4–6", stats["ms"], stats["total_validacoes_ms"])
 
-                                        st.markdown("### 📈 Comparativo (%)")
-                                        chart_data = {
-                                            "Loteria": ["Lotofácil", "Mega-Sena"],
-                                            "% Faixas alvo": [pct_lf, pct_ms],
-                                        }
-                                        st.bar_chart(chart_data, x="Loteria")
+                                    st.markdown("### 📈 Comparativo (%)")
+                                    chart_data = {
+                                        "Loteria": ["Lotofácil", "Mega-Sena"],
+                                        "% Faixas alvo": [pct_lf, pct_ms],
+                                    }
+                                    st.bar_chart(chart_data, x="Loteria")
 
     except SQLAlchemyError:
         logger.exception("Erro SQL em listar_usuarios")

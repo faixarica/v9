@@ -21,13 +21,14 @@ except ImportError as e:
 # ------------------------------------------------------------
 # ⚙️ Configurações iniciais
 # ------------------------------------------------------------
-st.set_page_config(page_title="Telemetria LS16 (Platinum)", layout="wide")
-st.markdown("""
-    <div style='text-align:center; font-size:32px; font-weight:700; color:#4ade80;'>
-        📊 Painel de Telemetria — LS16 (Platinum)
-    </div>
-    <hr>
-""", unsafe_allow_html=True)
+if __name__ == "__main__":
+    st.set_page_config(page_title="Telemetria LS16 (Platinum)", layout="wide")
+    st.markdown("""
+        <div style='text-align:center; font-size:32px; font-weight:700; color:#4ade80;'>
+            📊 Painel de Telemetria — LS16 (Platinum)
+        </div>
+        <hr>
+    """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------
 # 🧠 Funções utilitárias e cache
