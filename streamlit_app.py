@@ -8,9 +8,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# Debug (agora após config)
-# st.sidebar.markdown("✅ Sidebar carregada (debug)")
-
 # ================= PATHS =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.join(BASE_DIR, "app")
