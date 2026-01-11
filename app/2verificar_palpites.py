@@ -279,8 +279,9 @@ def contar_acertos_em_df(df_palpites, numeros_oficiais):
 # =========================
 # UI
 # =========================
-st.set_page_config(page_title="Analise Evolutiva", layout="wide")
-st.markdown("<h1 class='title'>📊 Analise Evolutiva dos Palpites/Bets</h1>", unsafe_allow_html=True)
+if __name__ == "__main__":
+    st.set_page_config(page_title="Analise Evolutiva", layout="wide")
+    st.markdown("<h1 class='title'>📊 Analise Evolutiva dos Palpites/Bets</h1>", unsafe_allow_html=True)
 st.markdown("<div class='subtle'>Filtre por mês, visualize apenas apostas validadas e compare modelos LSTMs vs outros geradores.</div>", unsafe_allow_html=True)
 
 with st.container():
