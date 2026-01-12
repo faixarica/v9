@@ -1,6 +1,7 @@
-        # app/main.py 28/12/20 v11 /06/01/26 9.13.1
+# app/main.py 28/12/20 v11 /06/01/26 9.13.1
 # autor: FFerreira XX
 # descrição: Aplicação principal Streamlit da fAIxaBet V9
+
 import streamlit as st
 
 def main():
