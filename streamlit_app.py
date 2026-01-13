@@ -12,7 +12,6 @@ st.set_page_config(
 )
 
 
-
 st.markdown("""
 <link rel="manifest" href="/manifest.json">
 <script>

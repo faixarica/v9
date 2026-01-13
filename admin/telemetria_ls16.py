@@ -22,7 +22,7 @@ except ImportError as e:
 # ⚙️ Configurações iniciais
 # ------------------------------------------------------------
 if __name__ == "__main__":
-    st.set_page_config(page_title="Telemetria LS16 (Platinum)", layout="wide")
+   #st.set_page_config(page_title="Telemetria LS16 (Platinum)", layout="wide")
     st.markdown("""
         <div style='text-align:center; font-size:32px; font-weight:700; color:#4ade80;'>
             📊 Painel de Telemetria — LS16 (Platinum)
