@@ -2,6 +2,17 @@
 import os
 import sys
 import streamlit as st
+
+st.markdown("""
+<link rel="manifest" href="/manifest.json">
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/service-worker.js');
+}
+</script>
+""", unsafe_allow_html=True)
+
+
 # ================= CONFIG STREAMLIT =================
 st.set_page_config(
     page_title="FaixaBet",
