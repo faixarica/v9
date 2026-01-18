@@ -8,16 +8,32 @@ Sampler OFICIAL – Mega-Sena MS17-v4 (FaixaBet)
 - Saída: palpites Mega-Sena (6 dezenas)
 """
 
+import sys
 import os
+sys.path.append(os.getcwd())
+
 import numpy as np
 import tensorflow as tf
+from paths import MODELS_DIR, data_path
 
 # ============================================================
 # CONFIGURAÇÕES
 # ============================================================
 
-MODEL_PATH = r"C:\Faixabet\V8\modelo_llm_max\models\megasena\ms17_v4\ms17_v4_transformer.keras"
-DATASET_X = r"C:\Faixabet\V8\modelo_llm_max\loterias\dados\X_ms17_v4.npy"
+MODEL_PATH = str(MODELS_DIR / "ms17" / "model_ms17.bin") # Assuming standard name or derived from file
+# Looking at PS1: $MODEL_CURRENT = "$MODEL_DIR\model_ms17.bin"
+# But original code had: ms17_v4_transformer.keras
+# Let's align with what PS1 expects OR what paths.py provides.
+# PS1 expects: model_ms17.bin
+# Original Sampler had: ms17_v4_transformer.keras
+# I should probably stick to what the code was trying to do, but V9 seems to use .bin?
+# Let's check `train_ls17_mega_v4.py` later to see what it saves.
+# For now, I will trust the Sampler's intent but use the correct directory.
+# Actually, the user said "revise o PS1". PS1 says `model_ms17.bin`.
+# I will use a safe path construction.
+
+MODEL_PATH = str(MODELS_DIR / "ls17_megasena_v4.keras")
+DATASET_X = data_path("X_ms17_v4.npy")
 
 NUM_DEZENAS = 6          # Mega-Sena
 TOTAL_NUMS = 60

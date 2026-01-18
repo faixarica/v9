@@ -7,11 +7,12 @@ import numpy as np
 import argparse, os
 
 BASE = os.path.dirname(__file__)
-DADOS = os.path.join(BASE, "dados")
+DADOS = os.path.join(os.path.dirname(__file__), "prepare_real", "dados")
 
 def save(arr, name):
+    os.makedirs(DADOS, exist_ok=True)   # <-- garante a pasta
     np.save(os.path.join(DADOS, name), arr)
-    print(f"[OK] {name} salvo ({arr.shape})")
+
 
 def generate_synth(n_samples, seq_len, n_feat=150, n_lab=60):
 

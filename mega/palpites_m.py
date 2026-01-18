@@ -947,7 +947,6 @@ def validar_palpite():
                 st.success(f"Palpite #{idp} validado com sucesso!")
                 st.rerun()
 
-
 def atualizar_status_palpite(id_palpite: int):
     db = Session()
     try:
