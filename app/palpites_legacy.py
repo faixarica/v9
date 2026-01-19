@@ -706,7 +706,6 @@ def carregar_ensemble_models(model_name, models_dir=None):
     Wrapper compatível com versões antigas de palpites.py.
     Agora aceita models_dir explicitamente (opcional).
     """
-    import streamlit as st
     import os
     import logging
     from datetime import datetime
@@ -715,8 +714,8 @@ def carregar_ensemble_models(model_name, models_dir=None):
     if models_dir is None:
         base_dir = os.environ.get("FAIXABET_BASE_DIR", os.getcwd())
         possiveis = [
-            os.path.join(base_dir, "modelo_llm_max", "models", "prod"),
-            os.path.join(base_dir, "modelo_llm_max", "models"),
+#            os.path.join(base_dir, "modelo_llm_max", "models", "prod"),
+#            os.path.join(base_dir, "modelo_llm_max", "models"),
             os.path.join(base_dir, "models"),
         ]
         for p in possiveis:

@@ -3,7 +3,8 @@ import random
 import pandas as pd
 import numpy as np
 
-CSV_PATH = "loteriamega.csv"
+BASE_DIR = Path(__file__).resolve().parents[3]  # ajusta conforme sua árvore
+CSV_PATH = BASE_DIR / "data" / "mega" / "loteriamega.csv"
 
 def gerar(qtd_dezenas: int):
     """

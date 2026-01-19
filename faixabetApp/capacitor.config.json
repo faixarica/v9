@@ -1,0 +1,10 @@
+{
+  "appId": "com.faixabet.app",
+  "appName": "FaixaBet",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://faixabet9.streamlit.app",
+    "cleartext": false
+  }
+}

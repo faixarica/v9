@@ -138,7 +138,7 @@ def mostrar_telemetria():
         # --------------------------------------------
         # 2) Desempenho médio e taxas (usando LATERAL)
         # --------------------------------------------
-        st.markdown("###  Desempenho médio (acertos) e taxas ≥13/≥14/15")
+        st.markdown("###  Desempenho médio (acertos) e taxas(%) ≥13/≥14/15")
 
         query_perf = text("""
             WITH base AS (
@@ -240,7 +240,6 @@ def _dezenas_acertos_sql(qtd_dezenas: int, tbl_palpites: str, tbl_res: str) -> s
     """
 
 def mostrar_analise_acertos_topo(user_id: int, loteria=None, loteria_ativa=None):
-    import streamlit as st
     from sqlalchemy import text
     from db import Session
 
@@ -428,7 +427,6 @@ def _sql_analise_acertos_megasena() -> str:
     """
 
 def evolucao_30_dias(user_id: int, loteria=None, loteria_ativa=None):
-    import streamlit as st
     from sqlalchemy import text
     from db import Session
 
@@ -1140,6 +1138,6 @@ def mostrar_dashboard():
         st.info("Premiação (ganhadores/rateio) não encontrada — verifique os nomes das colunas na tabela.")
 
 if __name__ == "__main__":
-    import streamlit as st
+    
     st.warning("Este arquivo é um módulo da aplicação. Execute o streamlit_app.py (arquivo principal).")
     st.stop()

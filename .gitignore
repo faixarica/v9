@@ -107,6 +107,11 @@ node_modules/
 *_debug.ps1
 *_test.ps1
 *_private.ps1
+*_sync_log.ps1
+*_sync_safe.ps1
+*_sync_megasena.ps1
+*_sync_dev.ps1
+*_push_selective.ps1
 
 # ======================================================
 # ⚠️ PROTEÇÃO ABSOLUTA
