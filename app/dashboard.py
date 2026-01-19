@@ -1133,7 +1133,7 @@ def mostrar_dashboard():
             </div>
         """, unsafe_allow_html=True)
 
-        st.dataframe(df_prem, width="stretch", hide_index=True)
+        st.dataframe(df_prem, use_container_width=True, hide_index=True)
     else:
         st.info("Premiação (ganhadores/rateio) não encontrada — verifique os nomes das colunas na tabela.")
 
